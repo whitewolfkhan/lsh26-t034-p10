@@ -1,0 +1,70 @@
+{
+  "team_id": "LSH26-T034",
+  "problem_id": "P10",
+  "repository_name": "lsh26-t034-p10",
+  "live_url": "",
+  "demo_video_url_optional": "",
+  "event_start_code": "LSH26-8490-C900",
+  "repository_created_before_release": false,
+  "pre_event_materials": [],
+  "sample_data": {
+    "loads_published_fixture": true,
+    "method": "The app ships with a bundled household dataset and a built static page in index.html. The tariff logic is implemented in engine.py and the public-case validation is managed by solve.py and tests.py.",
+    "reset_instructions": "Reload the page to restore the built-in data. The front-end and generated dataset are in-memory only and not persisted."
+  },
+  "problem_solving_method": "This project uses a single deterministic tariff engine in engine.py to compute slab pricing, daily ledger balances, run-out dates, and recharge recommendations. The browser version in index.html reads the embedded data produced by build_data.py and renders the results visually without any backend or build pipeline. solve.py validates the public cases and tests.py contains 252 self-checks to confirm correctness against the tariff rules.",
+  "requirements": {
+    "R1": {
+      "status": "complete",
+      "evidence": "Deterministic tariff calculations and validation logic are implemented in engine.py, solve.py, and tests.py. The README states that there are 252 self-checks covering public cases and invariants."
+    },
+    "R2": {
+      "status": "complete",
+      "evidence": "The interactive calculator and results view are in index.html, with the UI generation and embedded data prepared via build_data.py and template.html. The app presents household summaries, daily balance details, and tariff breakdowns in-browser."
+    },
+    "R3": {
+      "status": "complete",
+      "evidence": "The application computes daily ledger runs, run-out dates, recharge-to-target amounts, and monthly habit comparisons, matching the rules described in README.md. This is the core functionality of the prepaid meter advisor."
+    },
+    "R4": {
+      "status": "complete",
+      "evidence": "The project is a static HTML app with no runtime dependency or build step required. README.md explicitly states it can be opened directly in a browser and is suitable for static deployment such as Netlify."
+    }
+  },
+  "team_members": [
+    {
+      "registered_name": "Meheer Ali Khan | Abu Ruhan Mahamud",
+      "github_username": "whitewolfkhan | Abu-Ruhan-Mahamud",
+      "major_contribution": "Designed and implemented the tariff engine, validation tooling, generated dataset pipeline, browser UI, documentation, and verification logic.",
+      "evidence_paths_or_commits": [
+        "engine.py",
+        "solve.py",
+        "build_data.py",
+        "template.html",
+        "index.html",
+        "tests.py",
+        "README.md"
+      ]
+    }
+  ],
+  "major_design_decisions": [
+    "Single source of truth: all tariff arithmetic is computed in engine.py and shared across the CLI and browser versions.",
+    "Static deployment model: the app is delivered as plain HTML/CSS/JS and runs without a framework or build pipeline.",
+    "Deterministic validation: solve.py and tests.py verify all public cases and invariants before trusting the result.",
+    "No external runtime dependency: the only network fetch is the optional IBM Plex font, and the app falls back to system fonts."
+  ],
+  "known_limitations": [
+    "Data is bundled and in-memory; reloading the page restores the default fixture.",
+    "The project is designed for browser-based static use, not as a multi-user backend service.",
+    "The front-end is static and does not persist imported or edited data beyond the current session."
+  ],
+  "ai_tools_used": [
+    {
+      "tool": "AI-assisted implementation and validation",
+      "used_for": "Implementing the tariff engine, generated data pipeline, browser UI, and verification checks.",
+      "how_output_was_verified": "Verified against the documented rule set and the 252 self-checks in tests.py, as described in README.md."
+    }
+  ],
+  "licenses_file": "LICENSES.md",
+  "declaration": "The information above is complete and truthful to the best of the team's knowledge."
+}
