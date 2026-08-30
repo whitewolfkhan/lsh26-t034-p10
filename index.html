@@ -1,0 +1,1341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prepaid Meter Advisor</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+/* ---------------------------------------------------------------- tokens --
+   Light is the base palette. Dark is redefined twice: once for the OS setting
+   (guarded so an explicit light stamp still wins) and once for the theme stamp. */
+:root {
+  --page:      #f1f3f7;
+  --surface:   #ffffff;
+  --sunken:    #e8ecf2;
+  --ink:       #10141a;
+  --ink-2:     #4c545f;
+  --muted:     #7d8794;
+  --grid:      #e2e6ec;
+  --rule:      #d6dce4;
+  --ring:      rgba(16,20,26,0.10);
+  --shadow:    0 1px 2px rgba(16,20,26,.05), 0 8px 24px -16px rgba(16,20,26,.28);
+
+  --s1:  #2a78d6;   /* balance / low-balance habit   */
+  --s2:  #eb6834;   /* recharges / monthly habit     */
+  --s3:  #1baf7a;   /* meter's own reading           */
+  --s4:  #eda100;   /* VAT                           */
+  --good:     #0ca30c;
+  --warning:  #fab219;
+  --serious:  #ec835a;
+  --critical: #d03b3b;
+
+  /* slab ramp: one hue, cheap -> expensive, light -> dark */
+  --slab1: #86b6ef; --slab2: #5598e7; --slab3: #2a78d6;
+  --slab4: #1c5cab; --slab5: #104281; --slab6: #0d366b;
+  --slab-ink: #ffffff;
+
+  --tint-s1: rgba(42,120,214,.12);
+  --tint-neg: rgba(208,59,59,.10);
+
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --cond: "IBM Plex Sans Condensed", "IBM Plex Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page:    #0b0d10;
+    --surface: #15181d;
+    --sunken:  #1c2027;
+    --ink:     #f2f5f9;
+    --ink-2:   #b6bdc7;
+    --muted:   #838b96;
+    --grid:    #262b32;
+    --rule:    #2e343c;
+    --ring:    rgba(255,255,255,0.11);
+    --shadow:  0 1px 2px rgba(0,0,0,.5), 0 10px 28px -18px rgba(0,0,0,.9);
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+    --slab1: #184f95; --slab2: #256abf; --slab3: #2a78d6;
+    --slab4: #3987e5; --slab5: #6da7ec; --slab6: #9ec5f4;
+    --slab-ink: #0b0d10;
+    --tint-s1: rgba(57,135,229,.16);
+    --tint-neg: rgba(208,59,59,.18);
+  }
+}
+:root[data-theme="dark"] {
+  --page:    #0b0d10;
+  --surface: #15181d;
+  --sunken:  #1c2027;
+  --ink:     #f2f5f9;
+  --ink-2:   #b6bdc7;
+  --muted:   #838b96;
+  --grid:    #262b32;
+  --rule:    #2e343c;
+  --ring:    rgba(255,255,255,0.11);
+  --shadow:  0 1px 2px rgba(0,0,0,.5), 0 10px 28px -18px rgba(0,0,0,.9);
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+  --slab1: #184f95; --slab2: #256abf; --slab3: #2a78d6;
+  --slab4: #3987e5; --slab5: #6da7ec; --slab6: #9ec5f4;
+  --slab-ink: #0b0d10;
+  --tint-s1: rgba(57,135,229,.16);
+  --tint-neg: rgba(208,59,59,.18);
+}
+
+/* ------------------------------------------------------------------ base -- */
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 72px; }
+h1, h2, h3 { font-family: var(--cond); font-weight: 700; text-wrap: balance; margin: 0; letter-spacing: -.01em; }
+h1 { font-size: clamp(28px, 4.4vw, 42px); line-height: 1.06; }
+h2 { font-size: 21px; line-height: 1.2; }
+h3 { font-size: 15px; font-weight: 600; }
+p  { margin: 0; }
+a  { color: var(--s1); }
+:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; border-radius: 3px; }
+
+.eyebrow {
+  font-family: var(--cond); font-weight: 600; font-size: 11px;
+  letter-spacing: .13em; text-transform: uppercase; color: var(--muted);
+}
+.lede  { color: var(--ink-2); max-width: 66ch; }
+.small { font-size: 13px; color: var(--ink-2); }
+.tiny  { font-size: 12px; color: var(--muted); }
+.num   { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* ---------------------------------------------------------------- layout -- */
+.masthead {
+  display: flex; flex-wrap: wrap; gap: 20px 28px;
+  align-items: flex-end; justify-content: space-between;
+  padding-bottom: 20px; margin-bottom: 22px;
+  border-bottom: 1px solid var(--rule);
+}
+.masthead .who { display: flex; flex-direction: column; gap: 6px; }
+.picker { display: flex; flex-direction: column; gap: 6px; min-width: 260px; }
+select, input, textarea, button {
+  font-family: inherit; font-size: 14px; color: var(--ink);
+  background: var(--surface); border: 1px solid var(--rule);
+  border-radius: 7px; padding: 8px 10px;
+}
+select { cursor: pointer; }
+input[type="number"], input[type="date"] { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+textarea { font-family: var(--mono); font-size: 12.5px; line-height: 1.6; width: 100%; resize: vertical; }
+button {
+  cursor: pointer; font-weight: 500; background: var(--sunken);
+  transition: background .12s ease, border-color .12s ease;
+}
+button:hover { background: var(--surface); border-color: var(--muted); }
+button.primary { background: var(--s1); border-color: var(--s1); color: #fff; }
+button.primary:hover { filter: brightness(1.08); background: var(--s1); }
+
+section { margin-top: 34px; }
+.head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; }
+.head .why { color: var(--muted); font-size: 13px; }
+
+.card {
+  background: var(--surface); border: 1px solid var(--ring);
+  border-radius: 12px; box-shadow: var(--shadow); padding: 18px 20px;
+}
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 16px; }
+.grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.row { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field > span { font-size: 12px; color: var(--muted); }
+
+/* ------------------------------------------------------------ stat tiles -- */
+.tile { display: flex; flex-direction: column; gap: 3px; }
+.tile .label { font-size: 12px; color: var(--muted); }
+.tile .value {
+  font-family: var(--cond); font-weight: 700; font-size: 34px;
+  line-height: 1.1; letter-spacing: -.015em;
+}
+/* hero figures keep the display face and proportional digits; only columns go tabular */
+.tile .value.mono { font-variant-numeric: proportional-nums; }
+.tile .foot { font-size: 12.5px; color: var(--ink-2); }
+.tile.hero { border-left: 3px solid var(--s1); padding-left: 14px; }
+.tile.hero.warn { border-left-color: var(--critical); }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11.5px; font-weight: 500; padding: 2px 9px;
+  border-radius: 999px; border: 1px solid var(--ring); background: var(--sunken);
+  color: var(--ink-2); white-space: nowrap;
+}
+.pill.good     { color: var(--good);     border-color: color-mix(in srgb, var(--good) 45%, transparent); }
+.pill.warning  { color: var(--ink);      border-color: color-mix(in srgb, var(--warning) 60%, transparent); background: color-mix(in srgb, var(--warning) 14%, var(--surface)); }
+.pill.critical { color: var(--critical); border-color: color-mix(in srgb, var(--critical) 45%, transparent); }
+.pill .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+.banner {
+  display: flex; gap: 12px; align-items: flex-start;
+  border-radius: 10px; padding: 12px 14px; border: 1px solid var(--ring);
+  background: var(--sunken); font-size: 14px;
+}
+.banner .icon { font-family: var(--cond); font-weight: 700; font-size: 15px; line-height: 1.5; }
+.banner.warn     { border-color: color-mix(in srgb, var(--warning) 55%, transparent); background: color-mix(in srgb, var(--warning) 12%, var(--surface)); }
+.banner.critical { border-color: color-mix(in srgb, var(--critical) 45%, transparent); background: color-mix(in srgb, var(--critical) 9%, var(--surface)); }
+.banner.good     { border-color: color-mix(in srgb, var(--good) 40%, transparent); background: color-mix(in srgb, var(--good) 8%, var(--surface)); }
+
+/* ---------------------------------------------------------------- tables -- */
+.tablebox { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { padding: 6px 10px; text-align: right; white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+thead th {
+  font-family: var(--cond); font-weight: 600; font-size: 11px; color: var(--muted);
+  letter-spacing: .07em; text-transform: uppercase;
+  border-bottom: 1px solid var(--rule); position: sticky; top: 0; background: var(--surface);
+}
+tbody td { border-bottom: 1px solid var(--grid); font-variant-numeric: tabular-nums; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody td.n, tbody td.money { font-family: var(--mono); }
+tbody tr.total td { font-weight: 600; border-top: 1px solid var(--rule); border-bottom: 0; }
+td.neg { color: var(--critical); }
+.scroller { max-height: 380px; overflow: auto; border: 1px solid var(--grid); border-radius: 8px; }
+
+/* ----------------------------------------------------------------- chart -- */
+.chartbox { position: relative; }
+.chartbox svg { display: block; width: 100%; height: auto; }
+.tip {
+  position: absolute; pointer-events: none; opacity: 0; transform: translate(-50%, -100%);
+  background: var(--surface); border: 1px solid var(--ring); border-radius: 8px;
+  box-shadow: var(--shadow); padding: 8px 10px; font-size: 12px; min-width: 160px;
+  transition: opacity .1s ease; z-index: 5;
+}
+.tip .t-date { font-family: var(--cond); font-weight: 700; font-size: 13px; margin-bottom: 4px; }
+.tip dl { display: grid; grid-template-columns: auto auto; gap: 1px 12px; margin: 0; }
+.tip dt { color: var(--muted); }
+.tip dd { margin: 0; text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12.5px; color: var(--ink-2); }
+.legend .key { display: inline-flex; align-items: center; gap: 7px; }
+.legend .swatch { width: 14px; height: 3px; border-radius: 2px; background: var(--s1); }
+.legend .swatch.dot { width: 9px; height: 9px; border-radius: 50%; }
+
+/* ------------------------------------------------------------ slab ladder -- */
+.ladder { display: flex; flex-direction: column; gap: 3px; }
+.rung {
+  display: grid; grid-template-columns: 74px 1fr 62px auto; align-items: center; gap: 10px;
+  padding: 5px 8px; border-radius: 6px; font-size: 13px;
+}
+.rung .bar { height: 10px; border-radius: 3px; }
+.rung.here { background: var(--tint-s1); font-weight: 600; }
+.rung .rng { font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
+.rung .rate { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* ----------------------------------------------------------- stacked bar -- */
+.stack { display: flex; gap: 2px; height: 30px; border-radius: 5px; overflow: hidden; }
+.stack > i { display: block; height: 100%; }
+.breakdown { display: flex; flex-direction: column; gap: 10px; }
+
+.split { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.habit { border: 1px solid var(--ring); border-radius: 10px; padding: 14px 16px; background: var(--surface); }
+.habit.a { border-top: 3px solid var(--s1); }
+.habit.b { border-top: 3px solid var(--s2); }
+
+.footnote { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--rule); color: var(--ink-2); font-size: 13px; }
+.footnote ol { padding-left: 20px; margin: 8px 0 0; display: flex; flex-direction: column; gap: 4px; }
+details > summary { cursor: pointer; font-size: 13px; color: var(--ink-2); padding: 4px 0; }
+details[open] > summary { margin-bottom: 8px; }
+.stackrow { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<header class="masthead">
+  <div class="who">
+    <span class="eyebrow">Dhaka prepaid meter &middot; slab tariff</span>
+    <h1>Where the recharge actually goes</h1>
+    <p class="lede">The meter never shows the slab. This rebuilds the balance day by day at the
+      published rates, says when it runs out, and says what to put in today.</p>
+  </div>
+  <div class="picker">
+    <label class="field"><span>Household</span>
+      <select id="pick"></select>
+    </label>
+    <p class="tiny" id="pickmeta"></p>
+  </div>
+</header>
+
+<!-- the three numbers the family actually asks for, before any detail -->
+<section id="answers" style="margin-top:0">
+  <div class="card">
+    <div class="grid3" id="tiles"></div>
+    <div id="slabnote" style="margin-top:16px"></div>
+  </div>
+</section>
+
+<section id="household">
+  <div class="head">
+    <span class="eyebrow">1</span>
+    <h2>The household and its months</h2>
+    <span class="why">Daily readings and the recharge history they came with.</span>
+  </div>
+  <div class="card">
+    <div id="monthbadges" class="stackrow" style="margin-bottom:14px"></div>
+    <div class="tablebox"><table id="monthtable"></table></div>
+    <details style="margin-top:12px">
+      <summary>Recharge history &mdash; every top-up on record</summary>
+      <div class="tablebox scroller"><table id="rechargetable"></table></div>
+    </details>
+  </div>
+</section>
+
+<section id="ledger">
+  <div class="head">
+    <span class="eyebrow">2</span>
+    <h2>Balance, rebuilt day by day</h2>
+    <span class="why">Each day billed at the slab the month's running total has reached.</span>
+  </div>
+  <div class="card">
+    <div class="legend" style="margin-bottom:10px">
+      <span class="key"><i class="swatch" style="background:var(--s1)"></i> Meter balance</span>
+      <span class="key"><i class="swatch dot" style="background:var(--s2)"></i> Recharge</span>
+      <span class="key"><i class="swatch" style="background:var(--critical)"></i> Empty (0 tk)</span>
+      <span class="key tiny">Hover the chart for that day's figures.</span>
+    </div>
+    <div class="chartbox" id="balchart"></div>
+    <details style="margin-top:14px">
+      <summary>Day-by-day ledger &mdash; units, slab, energy, VAT, fixed charges, balance</summary>
+      <div class="tablebox scroller"><table id="daytable"></table></div>
+    </details>
+  </div>
+</section>
+
+<section id="questions">
+  <div class="head">
+    <span class="eyebrow">3</span>
+    <h2>The family's two questions</h2>
+    <span class="why">Both run on the rebuilt balance; every input is editable.</span>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <h3>When does this balance run out?</h3>
+      <p class="small" style="margin:6px 0 14px">No recharge in between, so no further demand
+        charge or meter rent &mdash; those are only taken when money goes in.</p>
+      <div class="row">
+        <label class="field" style="flex:1 1 130px"><span>Balance today (tk)</span>
+          <input type="number" id="q-bal" step="0.01"></label>
+        <label class="field" style="flex:1 1 110px"><span>Units per day</span>
+          <input type="number" id="q-daily" min="1" step="1"></label>
+        <label class="field" style="flex:1 1 130px"><span>Units used this month</span>
+          <input type="number" id="q-cum" min="0" step="1"></label>
+      </div>
+      <div id="runout" style="margin-top:16px"></div>
+    </div>
+
+    <div class="card">
+      <h3>What must go in today to reach a date?</h3>
+      <p class="small" style="margin:6px 0 14px">Broken into energy at the first-slab rate, the part
+        added by higher slabs, the fixed charges and VAT.</p>
+      <div class="row">
+        <label class="field" style="flex:1 1 160px"><span>Last until</span>
+          <input type="date" id="q-target"></label>
+        <label class="field" style="flex:1 1 200px"><span>Demand charge + meter rent</span>
+          <select id="q-fixed">
+            <option value="1">Not yet taken this month &mdash; add 82 tk</option>
+            <option value="0">Already taken this month &mdash; add nothing</option>
+          </select></label>
+      </div>
+      <div id="need" style="margin-top:16px"></div>
+    </div>
+  </div>
+</section>
+
+<section id="habits">
+  <div class="head">
+    <span class="eyebrow">4</span>
+    <h2>Two recharge habits, one set of readings</h2>
+    <span class="why">Identical consumption and the same calendar-month slab counter on both sides.</span>
+  </div>
+  <div class="card">
+    <div class="row" style="margin-bottom:16px">
+      <label class="field"><span>Low-balance: recharge when below (tk)</span>
+        <input type="number" id="h-thr" step="1"></label>
+      <label class="field"><span>Low-balance: amount (tk)</span>
+        <input type="number" id="h-low" step="1"></label>
+      <label class="field"><span>Monthly: amount on the 1st (tk)</span>
+        <input type="number" id="h-mon" step="1"></label>
+      <label class="field"><span>Both start from (tk)</span>
+        <input type="number" id="h-open" step="1"></label>
+    </div>
+    <div id="verdict" style="margin-bottom:16px"></div>
+    <div class="legend" style="margin-bottom:10px">
+      <span class="key"><i class="swatch" style="background:var(--s1)"></i> Low balance</span>
+      <span class="key"><i class="swatch" style="background:var(--s2)"></i> Monthly on the 1st</span>
+    </div>
+    <div class="chartbox" id="habitchart"></div>
+    <div class="split" id="habitcards" style="margin-top:16px"></div>
+    <div class="tablebox" style="margin-top:16px"><table id="habittable"></table></div>
+  </div>
+</section>
+
+<section id="slabwatch">
+  <div class="head">
+    <span class="eyebrow">Extra</span>
+    <h2>Where this month sits on the slab ladder</h2>
+    <span class="why">And what the next unit costs once the counter crosses.</span>
+  </div>
+  <div class="card grid2">
+    <div>
+      <div id="slabwarn" style="margin-bottom:14px"></div>
+      <div class="ladder" id="ladder"></div>
+    </div>
+    <div>
+      <h3>This month's units, priced by slab</h3>
+      <div class="breakdown" style="margin-top:10px" id="slabspend"></div>
+    </div>
+  </div>
+</section>
+
+<section id="bill">
+  <div class="head">
+    <span class="eyebrow">Extra</span>
+    <h2>One month's bill, itemised</h2>
+    <span class="why">Energy, demand charge, meter rent, VAT.</span>
+  </div>
+  <div class="card">
+    <label class="field" style="max-width:200px"><span>Month</span>
+      <select id="billmonth"></select></label>
+    <div id="billout" style="margin-top:16px"></div>
+  </div>
+</section>
+
+<section id="reconcile">
+  <div class="head">
+    <span class="eyebrow">Extra</span>
+    <h2>Check the rebuild against the real meter</h2>
+    <span class="why">Paste your own recharges, and any balances the meter actually showed.</span>
+  </div>
+  <div class="card">
+    <div class="grid2">
+      <label class="field"><span>Recharge history &mdash; one per line: date, amount</span>
+        <textarea id="r-rec" rows="8" spellcheck="false"></textarea></label>
+      <label class="field"><span>What the meter showed &mdash; one per line: date, balance</span>
+        <textarea id="r-obs" rows="8" spellcheck="false"
+          placeholder="2026-05-10, 812.50&#10;2026-05-24, 96.20"></textarea></label>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <label class="field" style="flex:0 1 160px"><span>Opening balance (tk)</span>
+        <input type="number" id="r-open" step="0.01"></label>
+      <button class="primary" id="r-run">Rebuild and compare</button>
+      <button id="r-reset">Reset to this household</button>
+      <button id="r-self">Fill readings from the rebuild (self-check)</button>
+    </div>
+    <div id="r-out" style="margin-top:16px"></div>
+  </div>
+</section>
+
+<footer class="footnote">
+  <h3>The tariff this tool uses, and nothing else</h3>
+  <div class="tablebox" style="margin-top:8px;max-width:560px"><table id="tarifftable"></table></div>
+  <h3 style="margin-top:18px">How the rules were read</h3>
+  <ol>
+    <li>The slab counter is the calendar month's running unit total. It resets on the 1st. A
+      recharge never resets it.</li>
+    <li>Slabs price unit positions, so unit 75 of a month costs 4.63 and unit 76 costs 5.26. A day
+      that crosses a boundary is split across the two rates.</li>
+    <li>The 42 tk demand charge and 40 tk meter rent are taken together, once, at the first recharge
+      of a calendar month. A month with no recharge in it carries neither.</li>
+    <li>VAT is 5% of the energy amount, as written. It is not charged on the demand charge or the
+      meter rent.</li>
+    <li>A recharge is credited at the start of its day; that day's units are then billed.</li>
+    <li>Cost means what the meter consumes &mdash; energy, VAT and the fixed charges that actually
+      fall due &mdash; not the amount deposited.</li>
+  </ol>
+</footer>
+</div>
+
+<script>
+"use strict";
+const HOUSEHOLDS = [{"id":"HOME-DHK","name":"Mirpur household \u2014 built for item 1","opening":450.0,"start":"2025-12-01","units":[5,6,4,5,8,6,7,6,4,5,6,6,7,8,4,5,6,4,7,8,6,5,6,4,5,8,6,7,6,4,5,4,7,5,6,5,3,4,5,5,6,7,3,4,5,3,6,7,5,4,5,3,4,7,5,6,5,3,4,5,5,6,7,6,4,5,6,6,7,8,4,5,6,4,7,8,6,5,6,4,5,8,6,7,6,4,5,6,6,7,11,10,8,9,10,10,11,12,8,9,10,8,11,12,10,9,10,8,9,12,10,11,10,8,9,10,10,11,12,8,9,16,17,17,18,19,15,16,17,15,18,19,17,16,17,15,16,19,17,18,17,15,16,17,17,18,19,15,16,17,15,24,25,23,22,23,21,22,25,23,24,23,21,22,23,23,24,25,21,22,23,21,24,25,23,22,23,21,22,25,23,24,20,21,19,20,23,21,22,21,19,20,21,21,22,23,19,20,21,19,22,23,21,20,21,19,20,23,21,22,21,19,17,18,18,19,20,16,17,18,16,19,20,18,17,18,16,17,20,18,19,18,16,17,18,18,19,20,16,17,18,16,19],"recharges":[["2025-12-03",500.0],["2025-12-16",400.0],["2025-12-28",400.0],["2026-01-11",400.0],["2026-01-24",400.0],["2026-02-06",400.0],["2026-02-19",500.0],["2026-03-04",700.0],["2026-03-17",700.0],["2026-03-29",600.0],["2026-04-05",1000.0],["2026-04-15",1200.0],["2026-04-26",1500.0],["2026-05-04",2000.0],["2026-05-14",2000.0],["2026-05-25",2000.0],["2026-06-10",1200.0],["2026-06-26",4000.0],["2026-07-07",2000.0],["2026-07-20",2000.0]],"today":"2026-07-31","daily":18,"target":"2026-08-31","comparison":{"months":["2026-05","2026-06","2026-07"],"source":"readings","dailyUnits":null,"opening":0.0,"threshold":150.0,"lowAmount":4000.0,"monthlyAmount":2500.0}},{"id":"PUB-01","name":"Household 01","opening":310.0,"start":"2026-01-01","units":[3,4,5,5,4,5,6,5,3,3,4,4,4,5,2,5,6,4,5,3,4,4,4,3,4,4,3,5,5,4,4,6,5,4,5,5,6,2,5,5,6,6,7,6,5,7,6,7,5,6,5,7,5,6,6,8,5,4,5,9,8,11,10,8,9,7,12,12,7,9,9,8,6,5,8,10,12,7,11,12,9,7,3,8,9,9,11,8,11,10,13,20,16,18,13,17,16,14,19,11,12,14,17,13,16,14,17,12,14,13,18,15,10,14,13,8,9,9,19,10,27,11,13,19,19,18,31,16,26,24,15,28,20,24,22,23,19,19,12,31,23,19,28,25,23,28,19,27,23,27,14,19,21,16,23,18,11,25,29,21,8,29,31,22,18,14,18,19,22,28,12,12,14,18,25,18,18,21,18,21,14],"recharges":[["2026-01-09",300.0],["2026-01-19",300.0],["2026-01-30",300.0],["2026-02-07",400.0],["2026-02-18",300.0],["2026-02-25",400.0],["2026-03-06",400.0],["2026-03-12",400.0],["2026-03-19",700.0],["2026-04-01",900.0],["2026-04-11",900.0],["2026-04-21",800.0],["2026-04-30",600.0],["2026-05-05",1600.0],["2026-05-17",2000.0],["2026-05-26",4300.0],["2026-06-25",900.0],["2026-06-29",1300.0]],"today":"2026-06-30","daily":19,"target":"2026-08-13","comparison":{"months":["2026-04","2026-05","2026-06"],"source":"readings","dailyUnits":null,"opening":0.0,"threshold":200.0,"lowAmount":5000.0,"monthlyAmount":2000.0}},{"id":"PUB-02","name":"Household 02","opening":692.0,"start":"2026-02-01","units":[6,3,6,2,5,3,8,5,3,5,6,7,4,4,6,4,6,4,1,5,5,4,5,5,3,5,5,5,9,9,10,9,8,9,9,6,6,7,11,10,11,9,7,12,8,8,5,10,7,9,5,7,9,9,5,8,9,5,8,15,17,14,13,11,9,13,12,13,14,5,17,11,13,13,9,13,11,7,17,10,14,11,11,9,11,11,15,11,18,15,19,21,18,29,15,13,19,27,18,19,23,20,26,21,21,21,23,32,26,17,23,34,24,28,22,18,21,15,21,22,12,21,24,16,13,19,22,16,28,19,22,10,16,21,17,15,19,14,14,14,30,22,18,13,22,15,20,20,22,16,19,18,17,19,11,15,17,18,17,17,18,16,7,14,7,16,14,17,17,18,17,17,14,12,14,17,10,15,10,13,18,15,11,12,13,14,10,12,17,16,11,10,13,7,8,9,13,19,16,17,15,19,21,18,16,12,14,11,13,17,13,15,15,7,14,7,10,11,7,16,9,12,6,15,9,7],"recharges":[["2026-02-24",300.0],["2026-03-04",300.0],["2026-03-08",500.0],["2026-03-17",400.0],["2026-03-25",400.0],["2026-04-01",500.0],["2026-04-08",900.0],["2026-04-20",400.0],["2026-04-24",900.0],["2026-05-05",2400.0],["2026-05-22",2400.0],["2026-06-01",1600.0],["2026-06-16",1000.0],["2026-06-23",1800.0],["2026-06-30",3800.0],["2026-08-17",900.0],["2026-08-25",900.0],["2026-09-03",300.0],["2026-09-07",400.0],["2026-09-13",300.0]],"today":"2026-09-14","daily":10,"target":"2026-10-20","comparison":{"months":["2026-06","2026-07","2026-08"],"source":"readings","dailyUnits":null,"opening":0.0,"threshold":200.0,"lowAmount":5000.0,"monthlyAmount":2500.0}},{"id":"PUB-03","name":"Household 03","opening":426.0,"start":"2025-12-01","units":[4,3,3,3,5,6,4,4,4,6,4,6,4,8,4,6,5,5,5,5,5,4,4,3,4,4,5,5,5,4,4,4,3,5,8,4,7,6,5,4,5,5,4,3,5,6,5,5,6,6,4,5,3,6,5,3,7,3,3,4,4,6,5,1,5,4,7,5,7,3,4,6,5,6,7,5,3,5,8,10,6,5,6,5,6,8,5,4,4,5,7,11,9,10,11,5,8,10,12,9,12,13,12,13,10,8,16,8,10,11,12,10,6,10,10,7,13,9,9,10,9,19,10,11,17,21,16,13,17,16,21,14,13,11,18,12,15,16,14,14,22,11,23,10,13,17,18,14,17,22,21,17,16,20,27,26,13,28,18,31,28,16,31,25,33,33,29,13,18,25,27,21,35,17,24,39,31,22,20,30,31,21,25,17,23,26,16,15,24,19,33,21,27,26,23,12,28,16,24,22,23,21,20,30,26,30,26,21,18,19,22,13],"recharges":[["2025-12-15",300.0],["2025-12-22",300.0],["2026-01-01",300.0],["2026-01-09",400.0],["2026-01-22",300.0],["2026-01-31",400.0],["2026-02-13",400.0],["2026-02-23",300.0],["2026-03-02",600.0],["2026-03-13",700.0],["2026-03-23",400.0],["2026-03-27",5000.0],["2026-05-14",1900.0],["2026-05-23",2800.0],["2026-06-02",1200.0],["2026-06-11",1500.0],["2026-06-21",1100.0],["2026-06-25",1900.0]],"today":"2026-06-30","daily":22,"target":"2026-07-27","comparison":{"months":["2026-04","2026-05","2026-06"],"source":"readings","dailyUnits":null,"opening":0.0,"threshold":150.0,"lowAmount":1000.0,"monthlyAmount":1500.0}},{"id":"PUB-04","name":"Household 04","opening":1165.0,"start":"2026-01-01","units":[3,4,3,3,5,3,5,5,4,5,4,3,5,2,2,4,3,4,4,6,5,5,5,6,5,3,3,5,5,4,2,6,7,4,4,6,4,5,6,6,6,5,6,6,7,4,5,7,5,6,2,5,5,6,6,6,5,7,5,9,3,10,9,6,5,8,9,9,9,8,9,9,8,8,10,12,7,11,11,9,7,9,11,8,10,7,8,3,8,8,11,13,10,8,12,17,11,14,12,9,14,18,15,10,14,15,11,17,13,14,12,15,9,8,6,14,14,13,13,20,15,21,14,23,30,25,18,28,15,10,14,30,17,19,11,15,14,19,29,21,21,16,24,20,25,22,20,30,15,19,25,17,17,17,18,14,28,22,15,21,26,15,17,12,23,21,17,21,14,18,27,18,23,17,15,16,24,14,15,21,19],"recharges":[["2026-02-15",300.0],["2026-02-23",300.0],["2026-03-02",600.0],["2026-03-15",600.0],["2026-03-25",400.0],["2026-04-01",600.0],["2026-04-09",900.0],["2026-04-20",600.0],["2026-04-28",3000.0],["2026-05-24",2200.0],["2026-06-03",1400.0],["2026-06-16",800.0],["2026-06-22",1800.0]],"today":"2026-06-30","daily":19,"target":"2026-07-26","comparison":{"months":["2026-04","2026-05","2026-06"],"source":"readings","dailyUnits":null,"opening":0.0,"threshold":200.0,"lowAmount":3000.0,"monthlyAmount":2000.0}},{"id":"PUB-05","name":"Household 05","opening":292.0,"start":"2025-12-01","units":[6,5,3,4,4,6,5,3,5,4,5,3,4,5,6,5,3,3,3,4,4,5,3,3,3,3,4,5,6,5,5,5,5,5,5,5,3,5,5,4,4,2,6,3,6,4,4,5,4,7,4,5,5,5,4,5,4,2,3,4,4,5,2,6,5,4,4,8,4,6,4,8,6,4,3,6,7,4,3,3,6,7,6,7,4,6,3,5,6,3,7,5,7,9,8,11,13,8,8,11,11,10,5,6,9,6,7,13,10,11,11,6,11,6,4,9,7,7,3,10,8,18,17,16,11,13,11,16,14,12,13,19,19,11,18,12,15,11,14,9,14,5,15,15,10,22,21,12,19,13,14,28,33,24,17,30,14,15,18,33,27,19,30,16,11,26,25,25,27,19,17,16,13,22,29,29,23,12,17,24,28,25],"recharges":[["2025-12-08",300.0],["2025-12-18",300.0],["2025-12-29",300.0],["2026-01-06",300.0],["2026-01-17",300.0],["2026-01-25",300.0],["2026-02-04",300.0],["2026-02-12",300.0],["2026-02-21",300.0],["2026-02-28",300.0],["2026-03-07",600.0],["2026-03-18",300.0],["2026-03-22",500.0],["2026-04-01",1100.0],["2026-04-14",800.0],["2026-04-24",600.0],["2026-04-27",5500.0],["2026-05-31",1200.0]],"today":"2026-05-31","daily":22,"target":"2026-07-03","comparison":{"months":["2026-03","2026-04","2026-05"],"source":"readings","dailyUnits":null,"opening":0.0,"threshold":100.0,"lowAmount":1000.0,"monthlyAmount":1500.0}},{"id":"PUB-06","name":"Household 06","opening":1237.0,"start":"2026-02-01","units":[7,4,6,4,5,6,6,7,6,5,6,5,4,5,6,7,6,7,4,5,7,6,4,5,3,6,5,6,11,7,6,10,6,9,7,8,9,9,11,10,7,9,10,9,7,9,6,7,12,12,8,12,9,7,11,2,10,8,10,10,11,13,14,13,8,13,13,17,17,15,16,16,12,13,12,18,14,18,13,13,14,14,14,15,16,16,13,14,18,26,19,13,23,24,15,23,17,18,15,23,18,22,18,25,20,27,23,14,16,23,31,26,19,22,22,20,16,24,24,23,26,19,22,33,27,17,15,15,18,22,20,21,23,21,15,29,19,16,13,19,9,17,24,18,17,20,13,25,16,13,20,8,11,15,10,19,20,13,12,15,15,13,14,15,10,17,10,10,19,12,17,14,20,16,18,20,16,17,17,23,12,12,11,16,15,6,7,11,20,16,8,15,13,16,11,12,15,17,16,17,20,21,13,18,19,17,18,14,17,16,15,19,11,14,11,13,7,14,19,9,10,15,13,11,16,13,10,16,14,13,13,15,12,13,16,11,15,10,12,13,9,17],"recharges":[["2026-03-09",700.0],["2026-03-22",400.0],["2026-03-28",400.0],["2026-04-03",900.0],["2026-04-14",700.0],["2026-04-22",1200.0],["2026-05-02",1300.0],["2026-05-14",2200.0],["2026-05-27",2400.0],["2026-05-31",4400.0],["2026-07-17",1200.0],["2026-07-29",1200.0],["2026-08-09",1400.0],["2026-08-25",800.0],["2026-08-30",900.0],["2026-09-09",800.0],["2026-09-19",900.0],["2026-09-29",900.0]],"today":"2026-09-30","daily":13,"target":"2026-10-25","comparison":{"months":["2026-07","2026-08","2026-09"],"source":"readings","dailyUnits":null,"opening":0.0,"threshold":100.0,"lowAmount":5000.0,"monthlyAmount":2000.0}},{"id":"PUB-07","name":"Household 07","opening":651.0,"start":"2025-12-01","units":[4,4,5,5,3,5,4,3,4,4,4,4,3,4,6,3,5,3,5,3,4,4,6,4,3,6,3,2,3,2,5,5,3,4,4,4,5,4,4,3,5,5,5,6,4,3,4,5,5,2,5,5,3,5,3,5,4,4,6,5,4,5,6,5,4,5,5,4,6,4,4,5,7,6,5,3,4,6,6,4,5,5,7,7,6,6,6,3,4,5,6,6,9,10,6,8,6,9,12,5,8,5,11,6,10,6,7,7,10,11,10,4,10,7,6,4,13,8,14,6,10,7,14,10,14,13,14,13,12,17,15,14,18,12,10,11,15,12,8,14,11,10,14,13,14,12,13,15,14,14,13,21,20,23,11,20,11,23,24,15,27,23,15,16,14,18,15,26,25,21,26,24,21,18,16,29,33,15,20,26,21,27],"recharges":[["2025-12-26",300.0],["2026-01-06",300.0],["2026-01-16",300.0],["2026-01-26",300.0],["2026-02-03",300.0],["2026-02-12",300.0],["2026-02-21",300.0],["2026-02-28",300.0],["2026-03-06",400.0],["2026-03-14",500.0],["2026-03-24",300.0],["2026-03-29",700.0],["2026-03-31",5700.0],["2026-05-29",1800.0]],"today":"2026-05-31","daily":23,"target":"2026-07-13","comparison":{"months":["2026-03","2026-04","2026-05"],"source":"readings","dailyUnits":null,"opening":0.0,"threshold":200.0,"lowAmount":2000.0,"monthlyAmount":2500.0}},{"id":"PUB-08","name":"Household 08","opening":702.0,"start":"2025-12-01","units":[5,5,4,4,4,5,3,4,6,2,4,3,4,4,2,6,4,2,5,4,4,4,4,4,4,5,3,4,4,5,5,4,1,5,5,4,3,5,4,4,4,2,4,4,4,4,4,5,3,3,3,4,6,3,5,3,4,3,4,2,4,3,3,5,7,7,6,4,4,7,3,5,4,6,5,5,5,6,6,5,6,2,7,6,3,5,7,6,5,5,8,8,7,11,8,5,4,6,6,4,9,8,5,8,6,9,6,9,10,6,7,5,6,9,8,5,10,5,9,9,6,18,18,8,14,22,16,15,13,11,15,15,15,11,17,15,13,7,15,12,10,11,19,16,11,15,11,12,14,18,11,21,17,31,18,19,26,17,27,23,20,23,11,24,24,22,20,19,20,26,13,17,21,22,13,22,14,26,19,20,27,27],"recharges":[["2025-12-29",300.0],["2026-01-08",300.0],["2026-01-19",300.0],["2026-01-31",300.0],["2026-02-09",300.0],["2026-02-17",300.0],["2026-02-25",300.0],["2026-03-04",400.0],["2026-03-13",500.0],["2026-03-24",500.0],["2026-04-02",800.0],["2026-04-11",800.0],["2026-04-20",800.0],["2026-04-25",5000.0]],"today":"2026-05-31","daily":20,"target":"2026-07-13","comparison":{"months":["2026-03","2026-04","2026-05"],"source":"readings","dailyUnits":null,"opening":0.0,"threshold":150.0,"lowAmount":1000.0,"monthlyAmount":2500.0}},{"id":"PUB-09","name":"Household 09","opening":272.0,"start":"2026-01-01","units":[4,5,4,6,5,4,5,5,5,4,6,4,4,5,3,5,5,6,3,3,5,4,4,4,4,4,5,2,4,5,5,6,6,5,4,7,6,4,5,5,6,2,5,7,2,5,3,4,4,5,7,7,3,7,5,4,5,3,5,8,5,9,8,10,4,7,7,12,11,5,6,13,10,9,8,7,7,11,9,5,12,8,9,8,7,11,7,8,9,8,10,11,18,18,5,17,10,10,17,15,12,14,15,12,15,16,15,16,12,12,14,15,11,10,12,16,13,20,14,10,12,24,14,24,24,24,28,24,25,25,20,18,18,10,27,17,23,23,31,13,16,19,11,16,23,20,18,28,16,28,21,18,24,24,17,17,13,15,21,21,12,21,21,20,15,20,18,12,20,18,15,16,23,21,11,17,21,19,22,22,24,17,22,14,15,13,14,20,9,19,21,15,14,14,19,12,17,14,15,17,16,27,17,14,18,16,16,11,21,9,18,11],"recharges":[["2026-01-07",300.0],["2026-01-17",300.0],["2026-01-26",300.0],["2026-02-04",300.0],["2026-02-13",300.0],["2026-02-22",300.0],["2026-03-02",500.0],["2026-03-12",700.0],["2026-03-25",600.0],["2026-04-04",1100.0],["2026-04-18",800.0],["2026-04-27",1100.0],["2026-04-28",5000.0],["2026-06-09",1500.0],["2026-06-23",1300.0],["2026-06-29",1600.0],["2026-07-13",1300.0],["2026-07-26",1000.0]],"today":"2026-07-31","daily":16,"target":"2026-08-24","comparison":{"months":["2026-05","2026-06","2026-07"],"source":"readings","dailyUnits":null,"opening":0.0,"threshold":100.0,"lowAmount":5000.0,"monthlyAmount":2500.0}},{"id":"PUB-10","name":"Household 10","opening":1362.0,"start":"2025-12-01","units":[6,6,3,3,5,5,4,6,6,4,5,3,5,5,5,5,4,5,4,3,4,6,5,4,6,3,6,3,4,4,3,4,7,5,4,3,4,6,3,6,3,4,3,6,4,4,2,4,4,3,5,5,5,5,4,3,5,4,6,5,4,4,4,5,5,4,6,6,8,5,5,6,7,6,5,7,4,6,5,5,7,3,6,5,4,5,4,6,3,5,7,13,9,10,7,5,8,7,7,4,9,8,11,12,12,11,11,8,10,9,8,10,5,7,8,10,10,8,10,12,10,11,14,17,12,5,15,15,21,17,10,18,12,16,14,15,15,15,13,12,14,8,15,13,13,7,14,17,4,16,17,16,26,26,24,24,26,21,28,12,20,25,21,27,18,23,17,36,20,25,30,26,20,26,19,21,22,22,24,19,16,26,25,22,6,26,17,20,22,15,22,12,22,23,20,23,16,14,17,25,20,19,21,20,19,23,10,25,17,18,21,24],"recharges":[["2026-01-24",300.0],["2026-02-02",300.0],["2026-02-10",300.0],["2026-02-17",400.0],["2026-03-01",700.0],["2026-03-16",500.0],["2026-03-23",600.0],["2026-04-02",800.0],["2026-04-12",900.0],["2026-04-22",1000.0],["2026-05-03",2100.0],["2026-05-18",2600.0],["2026-05-28",4900.0]],"today":"2026-06-30","daily":20,"target":"2026-08-09","comparison":{"months":["2026-04","2026-05","2026-06"],"source":"readings","dailyUnits":null,"opening":0.0,"threshold":100.0,"lowAmount":5000.0,"monthlyAmount":2000.0}},{"id":"PUB-11","name":"Household 11","opening":1175.0,"start":"2025-12-01","units":[4,5,6,4,3,4,4,1,3,5,5,5,5,5,5,4,7,6,4,6,5,5,5,5,4,5,6,4,4,4,4,6,6,7,4,7,5,7,5,4,6,6,4,3,6,5,6,7,3,2,4,3,5,6,5,6,5,7,5,6,7,4,4,7,9,7,8,5,7,4,5,4,6,7,7,7,6,6,6,4,10,6,7,6,6,3,8,6,6,5,7,9,10,9,6,8,10,11,7,11,10,9,11,9,11,12,11,13,11,13,7,11,12,8,15,8,12,10,12,12,9,11,19,10,20,16,15,18,25,14,19,14,17,18,17,13,21,20,16,14,20,15,21,14,9,14,22,21,16,11,17,23,36,31,25,31,25,32,29,31,26,22,28,29,33,28,20,34,28,25,23,31,13,29,14,31,20,27,17,25,37,26,34,21,20,29,18,20,23,24,32,29,27,29,17,22,27,21,15,14,24,21,27,27,20,18,28,30,18,20,29,27,21,22,16,25,21,25,9,10,21,25,16,16,22,21,23,32,13,20,17],"recharges":[["2026-01-12",400.0],["2026-01-25",300.0],["2026-01-31",400.0],["2026-02-12",300.0],["2026-02-18",300.0],["2026-02-24",300.0],["2026-03-03",600.0],["2026-03-14",600.0],["2026-03-22",600.0],["2026-03-30",800.0],["2026-04-09",1000.0],["2026-04-18",1100.0],["2026-04-27",1100.0],["2026-05-04",2500.0],["2026-05-17",2300.0],["2026-05-26",2300.0],["2026-06-03",1400.0],["2026-06-13",2700.0],["2026-06-27",2200.0],["2026-06-28",4000.0]],"today":"2026-07-19","daily":19,"target":"2026-08-27","comparison":{"months":["2026-04","2026-05","2026-06"],"source":"readings","dailyUnits":null,"opening":0.0,"threshold":100.0,"lowAmount":2000.0,"monthlyAmount":2500.0}},{"id":"PUB-12","name":"Household 12","opening":1488.0,"start":"2026-01-01","units":[4,2,5,2,3,5,4,5,6,3,3,4,4,2,4,4,4,3,5,4,4,6,3,4,4,4,6,5,1,3,3,5,3,6,5,2,5,4,8,3,6,5,5,5,4,3,3,6,5,4,5,5,7,4,5,7,8,5,4,10,8,4,6,8,8,9,7,7,9,9,8,8,11,6,12,4,11,7,6,7,8,5,10,7,5,10,9,4,8,9,10,15,10,18,19,10,10,13,18,21,14,13,18,11,12,17,15,8,11,10,14,16,12,8,11,17,15,6,12,19,12,15,29,24,20,31,22,9,31,13,23,20,15,14,26,20,18,19,15,29,16,19,22,13,17,17,17,19,9,20,24,18,13,15,17,12,11,16,10,20,14,16,16,9,14,20,13,24,20,24,20,19,22,18,21,13,15,22,17,13,18,18,12,9,23,14,22,14,17,23,9,21,14,10,10,14,9,11,14,11,14,15,19,5,13,16,11,22,11,20,14,23,9,10,9,12,14,12,10,18,19,16,20,17,18,12,15,12,17,16,15,14,11,16,17,12,16,12,16,19,18,13,11],"recharges":[["2026-03-02",400.0],["2026-03-11",600.0],["2026-03-22",600.0],["2026-04-03",1000.0],["2026-04-14",600.0],["2026-04-22",1100.0],["2026-05-04",1900.0],["2026-05-19",900.0],["2026-05-24",1400.0],["2026-06-01",1100.0],["2026-06-13",1500.0],["2026-06-25",1200.0],["2026-07-02",1200.0],["2026-07-16",1200.0],["2026-07-29",1100.0],["2026-07-31",3200.0]],"today":"2026-08-31","daily":15,"target":"2026-09-24","comparison":{"months":["2026-06","2026-07","2026-08"],"source":"readings","dailyUnits":null,"opening":0.0,"threshold":200.0,"lowAmount":2000.0,"monthlyAmount":1500.0}},{"id":"PUB-13","name":"Household 13","opening":494.0,"start":"2026-02-01","units":[8,7,7,7,4,7,6,4,7,8,4,5,5,4,4,5,6,5,4,6,8,4,5,4,7,5,6,7,8,8,10,11,8,7,10,9,11,8,11,6,7,6,8,13,11,7,14,15,6,8,12,11,6,12,13,10,6,7,9,14,15,15,16,15,12,8,14,8,15,15,21,21,14,12,12,17,10,20,25,17,12,10,14,14,20,17,11,13,7,22,21,21,24,26,21,12,25,24,25,20,23,24,29,22,25,26,21,28,21,24,23,28,22,28,29,20,24,20,26,21,19,24,24,15,14,26,19,19,24,14,12,21,11,24,22,20,21,33,20,26,21,25,31,15,17,11,23,21,26,17,16,9,20,19,19,17,17,18,13,23,15,21,12,18,19,18,19,11,20,26,17,17,14,16,19,18,26,23,22,18,15,18,10,11,12,10,21,12,16,22,15,13,17],"recharges":[["2026-02-13",300.0],["2026-02-21",300.0],["2026-02-28",300.0],["2026-03-05",500.0],["2026-03-15",800.0],["2026-03-27",700.0],["2026-04-06",800.0],["2026-04-15",600.0],["2026-04-21",900.0],["2026-04-29",1000.0],["2026-05-07",1500.0],["2026-05-18",1500.0],["2026-05-24",1200.0],["2026-05-28",1300.0],["2026-06-03",1100.0],["2026-06-13",1800.0],["2026-06-24",2000.0],["2026-07-06",900.0],["2026-07-14",800.0],["2026-07-21",1300.0],["2026-07-29",1700.0],["2026-07-31",4000.0]],"today":"2026-08-12","daily":15,"target":"2026-08-26","comparison":{"months":["2026-05","2026-06","2026-07"],"source":"readings","dailyUnits":null,"opening":0.0,"threshold":100.0,"lowAmount":2000.0,"monthlyAmount":2500.0}},{"id":"PUB-14","name":"Household 14","opening":510.0,"start":"2026-02-01","units":[6,6,7,5,6,6,7,5,6,7,5,4,5,6,9,8,7,7,5,4,8,4,5,4,8,5,7,7,13,12,12,9,12,9,8,10,7,9,7,10,9,8,10,9,11,8,7,12,12,11,9,11,11,12,10,11,9,8,11,18,19,22,19,8,15,17,20,16,21,15,15,20,11,14,12,19,18,18,14,15,17,12,12,15,19,9,15,18,16,28,18,14,30,21,26,38,22,22,25,29,22,25,22,18,21,23,27,24,27,29,18,19,33,25,27,32,23,32,23,26,30,15,31,26,13,24,25,19,14,17,22,21,31,27,20,34,31,23,23,17,18,21,22,25,26,26,33,34,27,33,25,16,22,16,19,19,17,26,17,14,18,18,27,24,26,22,21,19,22,23,22,21,19,21,17,25,18,20,16,22,19],"recharges":[["2026-02-14",300.0],["2026-02-20",400.0],["2026-03-02",600.0],["2026-03-12",500.0],["2026-03-21",300.0],["2026-03-24",500.0],["2026-03-31",800.0],["2026-04-08",1000.0],["2026-04-18",800.0],["2026-04-26",600.0],["2026-04-30",900.0],["2026-05-06",1800.0],["2026-05-18",3000.0],["2026-05-29",2200.0],["2026-06-10",2800.0],["2026-06-26",2500.0],["2026-06-28",5200.0]],"today":"2026-07-31","daily":20,"target":"2026-08-25","comparison":{"months":["2026-05","2026-06","2026-07"],"source":"readings","dailyUnits":null,"opening":0.0,"threshold":150.0,"lowAmount":1500.0,"monthlyAmount":2000.0}},{"id":"PUB-15","name":"Household 15","opening":605.0,"start":"2025-12-01","units":[3,4,4,4,3,3,4,5,6,4,4,4,4,4,3,3,4,3,4,4,3,4,5,2,5,5,3,3,4,5,4,3,5,5,3,4,3,6,4,3,3,5,3,3,4,3,4,2,3,1,4,2,4,4,3,4,3,2,3,2,5,3,5,6,4,6,5,5,5,7,3,3,3,4,5,7,5,9,6,3,4,6,4,6,1,6,4,7,5,6,8,7,4,10,3,6,8,12,6,7,7,8,9,8,5,8,11,8,6,8,4,8,9,9,8,8,6,7,7,9,5,11,13,14,13,12,12,9,7,12,16,16,12,5,11,19,11,13,14,13,18,11,11,23,15,10,18,8,17,14,15,10,20,16,22,22,23,20,7,8,16,21,26,16,18,20,24,18,22,30,24,20,17,17,17,14,18,26,16,19,23,18],"recharges":[["2025-12-25",300.0],["2026-01-04",300.0],["2026-01-16",300.0],["2026-01-30",300.0],["2026-02-08",300.0],["2026-02-17",300.0],["2026-02-26",300.0],["2026-03-05",300.0],["2026-03-11",600.0],["2026-03-23",500.0],["2026-04-02",1100.0],["2026-04-18",500.0],["2026-04-23",600.0],["2026-04-29",3000.0],["2026-05-24",900.0],["2026-05-29",1700.0]],"today":"2026-05-31","daily":20,"target":"2026-06-20","comparison":{"months":["2026-03","2026-04","2026-05"],"source":"readings","dailyUnits":null,"opening":0.0,"threshold":150.0,"lowAmount":1000.0,"monthlyAmount":1500.0}},{"id":"PUB-16","name":"Household 16","opening":546.0,"start":"2025-12-01","units":[5,4,3,5,7,6,4,6,5,4,5,3,4,5,8,6,3,6,5,4,4,3,3,4,4,5,4,6,4,6,5,7,4,5,6,6,5,7,5,2,3,6,5,3,5,5,5,6,4,4,4,4,7,3,5,7,6,5,5,5,4,3,6,8,5,5,6,6,8,6,5,5,6,7,5,3,8,4,6,8,6,7,8,6,7,9,5,7,5,6,11,9,10,9,11,10,13,9,10,9,11,13,9,10,6,10,7,12,9,8,8,7,9,8,11,12,11,7,10,11,10,14,26,17,14,15,11,21,16,13,16,17,11,16,17,13,12,15,21,10,17,19,14,15,16,11,19,18,12,18,21,17,21,25,28,19,12,22,34,20,38,18,28,20,18,21,24,20,25,28,18,23,20,24,22,16,32,25,27,25,29,33,16,18,16,26,27,33,17,18,16,21,20,16,20,26,20,17,31,22,24,18,24,23,24,26,21,24,24,21,24,18,22,14,17,18,14,18,23,19,20,21,18,23,22,12,18,19,10,13,21,14,20,15,16,22,15,19,12,22,18,21,16],"recharges":[["2025-12-18",400.0],["2025-12-31",300.0],["2026-01-08",300.0],["2026-01-18",300.0],["2026-01-26",300.0],["2026-02-03",400.0],["2026-02-14",300.0],["2026-02-20",300.0],["2026-02-26",300.0],["2026-03-04",300.0],["2026-03-08",600.0],["2026-03-18",500.0],["2026-03-26",600.0],["2026-03-28",4400.0],["2026-05-13",1200.0],["2026-05-20",2500.0],["2026-05-30",2000.0],["2026-06-11",1500.0],["2026-06-21",1700.0],["2026-06-28",1600.0],["2026-07-09",1200.0],["2026-07-20",1800.0],["2026-07-31",1300.0]],"today":"2026-07-31","daily":17,"target":"2026-08-27","comparison":{"months":["2026-05","2026-06","2026-07"],"source":"readings","dailyUnits":null,"opening":0.0,"threshold":100.0,"lowAmount":3000.0,"monthlyAmount":2500.0}},{"id":"PUB-17","name":"Household 17","opening":1155.0,"start":"2026-02-01","units":[5,5,6,5,4,5,6,7,5,4,6,4,5,10,6,3,6,3,6,4,6,5,6,7,7,3,5,5,10,11,6,9,7,8,6,9,9,9,8,9,14,10,2,10,7,6,10,5,7,9,9,7,11,9,9,11,7,10,9,19,17,15,14,13,23,14,12,16,16,18,19,13,9,15,16,16,13,12,14,11,5,11,14,9,16,15,18,12,19,29,19,19,22,17,25,15,15,18,19,24,28,22,12,23,21,21,31,21,20,30,31,24,27,19,12,20,29,33,19,16,23,22,27,9,16,11,13,27,18,19,17,24,23,20,12,24,18,17,18,18,28,21,29,17,13,20,29,15,21,25,23,19,11,12,8,24,7,16,10,18,16,7,15,17,16,17,15,17,15,15,17,14,22,19,18,10,17,19,8,18,19,16,18,18,17,19,9,18,13,13,17,17,14,9,10,12,15,18,16,10,12,22,15,16,17,14,18,16,20,10,18,12,13,17,12,18,9,11,5,14,12,14,13,14,7,13,15,18,14,12,12,16,10,15,10,12,16,14,11,12,9,10],"recharges":[["2026-03-07",500.0],["2026-03-16",500.0],["2026-03-26",300.0],["2026-03-30",400.0],["2026-04-03",800.0],["2026-04-12",1300.0],["2026-04-28",1200.0],["2026-05-07",1900.0],["2026-05-21",1300.0],["2026-05-25",1200.0],["2026-05-30",1500.0],["2026-06-11",1300.0],["2026-06-22",1700.0],["2026-06-29",1900.0],["2026-07-18",1400.0],["2026-07-30",1000.0],["2026-08-08",700.0],["2026-08-16",900.0],["2026-08-25",800.0],["2026-08-29",4200.0]],"today":"2026-09-30","daily":12,"target":"2026-10-29","comparison":{"months":["2026-07","2026-08","2026-09"],"source":"readings","dailyUnits":null,"opening":0.0,"threshold":200.0,"lowAmount":2000.0,"monthlyAmount":2000.0}},{"id":"PUB-18","name":"Household 18","opening":851.0,"start":"2026-02-01","units":[6,6,6,5,4,4,6,6,7,6,4,8,6,4,4,8,6,7,7,7,7,7,4,5,7,6,6,6,12,8,8,10,7,8,6,9,14,9,7,9,11,14,10,8,4,9,11,11,12,14,11,8,7,12,11,11,14,12,11,17,17,17,14,17,13,12,9,22,20,9,21,14,20,14,13,20,16,16,11,13,6,11,23,15,17,13,10,17,16,29,20,33,10,22,18,30,12,33,27,16,8,18,26,19,33,30,28,26,23,36,24,22,25,27,23,23,33,20,32,30,27,31,21,20,14,22,21,20,18,14,28,18,25,20,19,18,21,28,17,27,18,19,20,34,19,12,14,26,17,27,16,22,23,21,13,27,13,17,14,24,14,17,22,18,16,16,27,18,17,18,21,22,17,25,17,19,16,23,25,14,14,15,19,16,14,21,22,21,17,23,11,25,21,18,15,15,16,17,21,13,15,20,13,15,21,13,10,18,15,19,27,18,14,15,19,16,10,13,12,14,9,16,18,17,9,14,20,15,20,13,15,8,14,19,16,15,15,21,7,22,18,6],"recharges":[["2026-02-25",300.0],["2026-03-02",700.0],["2026-03-15",400.0],["2026-03-22",600.0],["2026-03-30",600.0],["2026-04-06",1300.0],["2026-04-19",1100.0],["2026-04-30",1300.0],["2026-05-10",1200.0],["2026-05-18",2500.0],["2026-05-28",1600.0],["2026-06-01",1400.0],["2026-06-13",1300.0],["2026-06-21",1900.0],["2026-06-30",1800.0],["2026-07-15",1800.0],["2026-07-27",1600.0],["2026-08-07",1400.0],["2026-08-19",800.0],["2026-08-25",1200.0],["2026-08-29",3000.0]],"today":"2026-09-30","daily":15,"target":"2026-10-14","comparison":{"months":["2026-07","2026-08","2026-09"],"source":"readings","dailyUnits":null,"opening":0.0,"threshold":100.0,"lowAmount":1500.0,"monthlyAmount":1500.0}},{"id":"PUB-19","name":"Household 19","opening":1388.0,"start":"2026-02-01","units":[5,5,5,7,5,6,7,6,6,8,4,6,5,6,6,3,7,4,6,4,7,8,4,7,5,7,6,5,12,9,10,9,15,5,6,9,11,11,12,16,8,12,12,14,7,7,10,9,9,8,13,13,10,11,11,11,11,10,10,15,14,16,20,19,12,17,8,13,17,18,13,24,9,17,19,11,17,20,14,13,18,11,11,10,18,11,15,21,16,16,17,28,24,25,19,25,36,28,19,23,31,28,22,13,30,27,20,16,20,26,34,19,24,25,12,26,23,18,12,17,18,28,25,19,22,30,19,19,18,14,23,18,17,13,34,22,17,27,16,24,28,20,27,18,18,26,25,23,20,12,16,14,14,19,21,13,14,15,21,20,10,21,16,18,19,12,20,15,13,23,13,23,17,14,16,15,26,13,16,14,21,7,14,15,17,12,17,10,21,19,14,14,15,10,15,16,16,21,23,19,24,19,14,18,13,9,19,16,12,19,15,13,17,9,15,13,13,16,13,15,16,12,14,19,10,17,15,15,17,12,16,13,18,9,14,16,16,16,15,14,18,15],"recharges":[["2026-03-10",500.0],["2026-03-17",800.0],["2026-03-29",400.0],["2026-04-03",1400.0],["2026-04-18",700.0],["2026-04-25",1200.0],["2026-05-04",1200.0],["2026-05-12",1300.0],["2026-05-19",2400.0],["2026-05-30",2700.0],["2026-06-19",1300.0],["2026-06-25",1400.0],["2026-07-01",1600.0],["2026-07-18",700.0],["2026-07-24",700.0],["2026-07-28",1500.0],["2026-07-29",4300.0],["2026-09-23",1100.0]],"today":"2026-09-30","daily":15,"target":"2026-11-13","comparison":{"months":["2026-07","2026-08","2026-09"],"source":"readings","dailyUnits":null,"opening":0.0,"threshold":150.0,"lowAmount":3000.0,"monthlyAmount":2000.0}},{"id":"PUB-20","name":"Household 20","opening":814.0,"start":"2026-01-01","units":[5,3,4,5,5,3,3,3,4,4,4,5,5,3,5,3,6,4,3,4,6,5,5,6,6,5,5,4,5,4,3,5,6,8,7,6,4,5,6,7,4,5,5,4,4,8,7,4,6,7,6,7,5,8,4,3,5,3,6,5,9,8,9,7,9,8,8,6,8,7,7,6,10,10,4,9,8,7,12,8,7,9,10,9,8,5,8,11,7,7,10,13,10,11,14,10,12,15,11,16,9,11,9,19,13,13,15,11,17,20,11,18,14,20,14,11,18,17,12,15,19,17,10,10,20,27,17,22,15,19,17,17,20,20,19,17,13,14,20,21,25,13,18,18,20,20,18,16,15,13,19,24,16,10,12,19,7,14,26,13,18,12,22,9,12,22,21,21,18,20,23,19,11,11,23,24,20,21,20,17,20],"recharges":[["2026-01-31",300.0],["2026-02-08",300.0],["2026-02-16",300.0],["2026-02-22",300.0],["2026-03-03",600.0],["2026-03-15",600.0],["2026-03-27",600.0],["2026-04-06",600.0],["2026-04-14",800.0],["2026-04-23",800.0],["2026-04-29",3300.0],["2026-05-28",1200.0],["2026-06-07",1500.0],["2026-06-21",1700.0]],"today":"2026-06-30","daily":19,"target":"2026-07-15","comparison":{"months":["2026-04","2026-05","2026-06"],"source":"readings","dailyUnits":null,"opening":0.0,"threshold":150.0,"lowAmount":1000.0,"monthlyAmount":2500.0}},{"id":"PUB-21","name":"Household 21","opening":1251.0,"start":"2026-02-01","units":[7,5,5,4,7,6,6,6,5,7,6,6,7,6,3,5,8,2,6,5,5,6,7,5,5,9,4,6,14,10,8,6,8,8,8,11,7,14,9,7,11,7,8,12,8,8,12,7,8,12,7,10,7,7,11,8,8,10,9,17,13,18,5,22,14,12,16,10,18,14,13,9,18,12,14,21,18,16,16,18,11,12,14,10,17,17,13,8,17,22,26,11,22,21,26,34,13,12,11,22,17,25,24,14,25,29,28,38,20,17,19,28,36,22,28,15,17,22,18,23,25,23,19,17,19,17,22,27,15,21,23,14,19,17,20,15,16,30,23,18,26,20,13,12,28,15,27,26,16,20,17,28,15,20,12,11,15,20,10,19,18,15,17,16,21,23,16,15,11,14,12,8,20,12,19,18,14,23,17,17,14,5,16,14,21,20,17,19,6,13,15,21,19,14,16,16,20,14,11,20,20,9,19,10,21,15,15,19,22,19,14,15,14,10,10,17,11,15,13,18,15,13,10,9,12,13,12,13],"recharges":[["2026-03-08",400.0],["2026-03-14",700.0],["2026-03-26",500.0],["2026-04-03",800.0],["2026-04-12",700.0],["2026-04-19",800.0],["2026-04-28",800.0],["2026-05-04",1700.0],["2026-05-18",1500.0],["2026-05-24",2600.0],["2026-06-07",1200.0],["2026-06-17",1600.0],["2026-06-26",1500.0],["2026-06-27",3200.0],["2026-08-03",700.0],["2026-08-11",800.0],["2026-08-18",800.0],["2026-08-26",1400.0],["2026-09-05",400.0],["2026-09-09",300.0],["2026-09-12",300.0],["2026-09-16",400.0]],"today":"2026-09-16","daily":13,"target":"2026-10-22","comparison":{"months":["2026-06","2026-07","2026-08"],"source":"readings","dailyUnits":null,"opening":0.0,"threshold":100.0,"lowAmount":1500.0,"monthlyAmount":2000.0}},{"id":"PUB-22","name":"Household 22","opening":917.0,"start":"2026-01-01","units":[4,3,4,3,4,4,3,5,5,3,4,5,5,3,5,4,4,4,3,5,3,6,4,5,4,7,7,4,4,6,5,7,6,4,7,6,7,5,6,2,6,6,7,6,7,6,5,5,7,3,4,7,5,5,5,4,6,6,5,11,8,12,8,11,10,12,8,8,10,12,8,10,11,7,5,11,10,8,7,12,7,12,5,6,12,11,7,10,12,11,19,15,17,10,15,25,12,12,15,16,18,16,15,14,13,17,12,15,20,13,15,18,12,16,14,8,16,16,6,12,25,28,30,13,22,26,21,25,32,17,17,16,24,21,24,25,17,32,26,32,14,14,33,22,32,25,23,27,19,26,20,24,27,15,14,28,21,17,21,15,23,29,13,24,22,24,18,22,23,17,21,30,20,14,22,23,22,29,24,15,15,13,18,15,16,11,22,11,22,8,15,21,12,28,12,15],"recharges":[["2026-02-04",300.0],["2026-02-12",300.0],["2026-02-19",400.0],["2026-03-02",700.0],["2026-03-14",400.0],["2026-03-21",400.0],["2026-03-27",400.0],["2026-04-01",800.0],["2026-04-10",800.0],["2026-04-18",800.0],["2026-04-26",1200.0],["2026-04-30",4600.0],["2026-05-30",1200.0],["2026-06-06",1700.0],["2026-06-19",1700.0],["2026-06-27",1100.0],["2026-07-03",300.0],["2026-07-05",400.0],["2026-07-09",300.0],["2026-07-12",400.0],["2026-07-15",400.0]],"today":"2026-07-15","daily":16,"target":"2026-08-20","comparison":{"months":["2026-04","2026-05","2026-06"],"source":"readings","dailyUnits":null,"opening":0.0,"threshold":100.0,"lowAmount":1000.0,"monthlyAmount":2500.0}},{"id":"PUB-23","name":"Household 23","opening":516.0,"start":"2025-12-01","units":[3,4,3,4,2,6,3,2,3,3,5,5,3,6,4,5,4,5,6,7,3,5,5,3,4,3,4,4,4,3,3,1,4,4,5,4,4,5,4,5,5,4,4,5,5,6,3,3,5,4,6,5,5,4,3,5,5,4,4,5,5,2,8,6,6,6,6,5,6,6,6,8,5,6,4,4,6,6,5,4,4,4,7,3,4,7,4,3,5,4,9,2,9,10,4,8,7,8,6,10,6,11,10,12,7,5,9,2,6,10,11,9,9,8,5,7,11,8,7,10,9,9,16,14,13,7,14,17,16,13,16,15,15,17,18,13,17,11,13,11,19,14,14,17,15,9,13,14,14,14,12,25,28,21,15,20,19,17,20,18,32,26,17,25,27,17,15,24,21,29,12,19,22,25,27,24,10,17,22,18,18,33],"recharges":[["2025-12-20",300.0],["2025-12-29",300.0],["2026-01-10",300.0],["2026-01-20",300.0],["2026-01-28",300.0],["2026-02-05",300.0],["2026-02-13",300.0],["2026-02-21",300.0],["2026-03-02",300.0],["2026-03-08",500.0],["2026-03-18",300.0],["2026-03-23",500.0],["2026-04-01",500.0],["2026-04-08",1000.0],["2026-04-18",1000.0],["2026-04-29",5700.0]],"today":"2026-05-31","daily":21,"target":"2026-07-06","comparison":{"months":["2026-03","2026-04","2026-05"],"source":"readings","dailyUnits":null,"opening":0.0,"threshold":100.0,"lowAmount":1500.0,"monthlyAmount":1500.0}},{"id":"PUB-24","name":"Household 24","opening":209.0,"start":"2026-02-01","units":[5,6,7,7,8,5,7,6,3,4,5,5,8,5,6,5,5,5,8,8,7,6,7,5,5,6,4,7,13,9,9,18,8,9,10,10,13,9,4,9,10,9,11,10,10,9,10,6,8,11,9,12,6,8,9,8,11,11,6,15,11,15,6,12,17,24,13,18,12,11,18,19,17,20,20,14,18,11,13,13,22,12,17,17,20,18,15,17,12,15,14,32,26,25,33,37,25,29,17,21,26,25,14,20,25,26,26,24,21,36,21,31,11,12,21,28,30,27,20,19,18,17,28,24,24,27,15,32,18,24,43,16,18,24,31,18,37,21,15,21,27,18,24,21,15,19,23,20,24,28,24,24,16,16,19,19,17,21,23,17,17,20,19,11,15,26,24,25,18,16,17,24,15,8,16,19,16,20,20,17,15,14,14,15,17,13,24,15,23,24,17,20,18,13,15,13,18,15,20,14,20,21,19,20,20,21,11,5,13,16,13,12],"recharges":[["2026-02-04",400.0],["2026-02-14",300.0],["2026-02-21",400.0],["2026-03-02",700.0],["2026-03-14",500.0],["2026-03-22",300.0],["2026-03-26",600.0],["2026-04-04",900.0],["2026-04-14",700.0],["2026-04-21",1400.0],["2026-05-01",1400.0],["2026-05-11",1900.0],["2026-05-21",2700.0],["2026-06-01",2600.0],["2026-06-18",1800.0],["2026-06-27",2600.0],["2026-06-29",3500.0],["2026-08-10",1200.0],["2026-08-21",1700.0]],"today":"2026-08-31","daily":16,"target":"2026-09-30","comparison":{"months":["2026-06","2026-07","2026-08"],"source":"readings","dailyUnits":null,"opening":0.0,"threshold":100.0,"lowAmount":5000.0,"monthlyAmount":1500.0}},{"id":"PUB-25","name":"Household 25","opening":1453.0,"start":"2026-01-01","units":[4,4,6,7,3,6,4,3,5,4,5,5,4,4,5,5,4,4,3,4,4,2,3,3,4,4,3,6,5,6,6,5,5,3,5,6,5,6,5,6,7,6,8,7,6,5,4,6,5,6,8,5,6,5,4,5,7,4,5,7,8,6,9,12,7,8,6,9,8,7,11,13,7,6,9,10,11,10,12,9,8,6,6,14,9,7,8,8,9,5,14,8,14,14,9,18,15,15,22,17,12,14,12,14,14,12,14,13,15,17,13,11,13,20,15,14,12,14,17,16,17,30,20,30,25,18,22,29,17,25,14,26,20,19,24,16,27,27,32,21,24,16,33,23,34,22,18,21,15,22,31,26,23,21,19,23,28,22,18,14,22,10,17,18,23,19,26,29,17,34,14,17,27,27,21,24,23,13,18,25,17,17,17,18,19,20,24,9,22,20,22,15,18,20,14,17,17,16],"recharges":[["2026-02-22",400.0],["2026-03-05",500.0],["2026-03-14",400.0],["2026-03-20",600.0],["2026-03-31",700.0],["2026-04-09",1200.0],["2026-04-23",1200.0],["2026-04-29",5700.0],["2026-06-03",2100.0],["2026-06-20",2300.0],["2026-06-30",2200.0]],"today":"2026-07-17","daily":18,"target":"2026-08-04","comparison":{"months":["2026-04","2026-05","2026-06"],"source":"readings","dailyUnits":null,"opening":0.0,"threshold":200.0,"lowAmount":2000.0,"monthlyAmount":1500.0}}];
+
+/* =======================================================================
+   Engine. All money is held in integer ticks of 0.0001 tk, so every figure
+   is exact: the slab rates have two decimals and VAT is energy/20, which
+   stays whole because every rate in ticks divides by 20.
+   ======================================================================= */
+const TK = 10000;
+const SLABS = [
+  { upto: 75,       rate: 46300  },   // units 1-75    @ 4.63
+  { upto: 200,      rate: 52600  },   // units 76-200  @ 5.26
+  { upto: 300,      rate: 56300  },   // units 201-300 @ 5.63
+  { upto: 400,      rate: 58300  },   // units 301-400 @ 5.83
+  { upto: 600,      rate: 93000  },   // units 401-600 @ 9.30
+  { upto: Infinity, rate: 107000 },   // units 601+    @ 10.70
+];
+const DEMAND = 42 * TK, RENT = 40 * TK, FIXED = DEMAND + RENT;
+const BASE_RATE = SLABS[0].rate;
+
+const slabIndex = cum => { const n = cum + 1; for (let i = 0; i < SLABS.length; i++) if (n <= SLABS[i].upto) return i; };
+const slabLo = i => (i === 0 ? 1 : SLABS[i - 1].upto + 1);
+const slabLabel = i => (SLABS[i].upto === Infinity ? slabLo(i) + "+" : slabLo(i) + "\u2013" + SLABS[i].upto);
+const vat = e => e / 20;
+
+/** Cost of `units` when `cumBefore` units are already on this month's counter. */
+function energy(cumBefore, units) {
+  let cost = 0, n = cumBefore, left = units;
+  const parts = [];
+  while (left > 0) {
+    const i = slabIndex(n), cap = SLABS[i].upto;
+    const take = cap === Infinity ? left : Math.min(left, cap - n);
+    cost += SLABS[i].rate * take;
+    parts.push({ slab: i, units: take, cost: SLABS[i].rate * take });
+    n += take; left -= take;
+  }
+  return { cost, parts };
+}
+
+/* --- dates as integer day numbers, UTC throughout --- */
+const DAY = 86400000;
+const dnum = iso => { const [y, m, d] = iso.split("-").map(Number); return Date.UTC(y, m - 1, d) / DAY; };
+const diso = n => new Date(n * DAY).toISOString().slice(0, 10);
+const dmon = n => new Date(n * DAY).toISOString().slice(0, 7);
+const dday = n => new Date(n * DAY).getUTCDate();
+const MONTHNAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const monLabel = ym => { const [y, m] = ym.split("-"); return MONTHNAMES[+m - 1] + " " + y; };
+const dateLabel = iso => { const n = dnum(iso); return dday(n) + " " + MONTHNAMES[+iso.slice(5, 7) - 1].slice(0, 3) + " " + iso.slice(0, 4); };
+
+/* --- money formatting: half-up, away from zero, matching the Python engine --- */
+function fmt(ticks, dp = 2) {
+  const s = ticks < 0 ? -1 : 1, a = Math.abs(ticks);
+  const v = Math.round(a / (dp === 2 ? 100 : 10000)) / (dp === 2 ? 100 : 1);
+  return (s < 0 ? "-" : "") + v.toLocaleString("en-US", { minimumFractionDigits: dp, maximumFractionDigits: dp });
+}
+const tkOf = taka => Math.round(taka * TK);
+
+/**
+ * Day-by-day rebuild.
+ * @param days      [{n, units}] consecutive
+ * @param recharges Map dayNumber -> ticks, credited at the start of the day
+ * @param opening   ticks
+ */
+function simulate(days, recharges, opening) {
+  let bal = opening, cum = 0, cur = null;
+  const taken = new Set(), ledger = [], months = new Map();
+  let tE = 0, tV = 0, tF = 0, tR = 0, tU = 0;
+
+  for (const { n, units } of days) {
+    const key = dmon(n);
+    if (key !== cur) { if (cur !== null) cum = 0; cur = key; }
+    if (!months.has(key)) months.set(key, { month: key, units: 0, energy: 0, vat: 0, fixed: 0, recharged: 0, count: 0, first: n, last: n, end: 0 });
+    const m = months.get(key);
+    m.last = n;
+
+    const rec = recharges.get(n) || 0;
+    let fixedToday = 0;
+    if (rec > 0) {
+      bal += rec; tR += rec; m.recharged += rec; m.count++;
+      if (!taken.has(key)) { taken.add(key); fixedToday = FIXED; bal -= FIXED; tF += FIXED; m.fixed += FIXED; }
+    }
+    const { cost: e, parts } = energy(cum, units);
+    const v = vat(e);
+    bal -= e + v;
+    cum += units; tE += e; tV += v; tU += units;
+    m.units += units; m.energy += e; m.vat += v; m.end = bal;
+
+    ledger.push({ n, date: diso(n), month: key, units, cumBefore: cum - units, cum,
+                  recharge: rec, fixed: fixedToday, energy: e, vat: v, balance: bal,
+                  slab: units ? slabIndex(cum - 1) : slabIndex(cum), parts });
+  }
+  return { ledger, months, end: bal, energy: tE, vat: tV, fixed: tF, recharged: tR,
+           units: tU, cost: tE + tV + tF, fixedMonths: taken.size };
+}
+
+/** Item 3a. Burn the balance forward with no further recharge. */
+function runout(fromN, balance, daily, cumMonth, horizon = 2000) {
+  if (balance <= 0) return { empty: true, date: null, days: 0, rows: [] };
+  let bal = balance, cum = cumMonth, month = dmon(fromN), n = fromN + 1;
+  const rows = [];
+  for (let i = 0; i < horizon; i++) {
+    if (dmon(n) !== month) { month = dmon(n); cum = 0; }
+    const e = energy(cum, daily).cost, v = vat(e);
+    bal -= e + v; cum += daily;
+    rows.push({ n, date: diso(n), balance: bal, cum });
+    if (bal <= 0) return { empty: false, date: diso(n), days: rows.length, rows };
+    n++;
+  }
+  return { empty: false, date: null, days: null, rows };
+}
+
+/** Item 3b. What has to go in today to cover every day up to and including `target`. */
+function needed(todayN, targetN, balance, daily, cumMonth, fixedDue) {
+  let cum = cumMonth, month = dmon(todayN), e = 0, units = 0;
+  const bySlab = new Map();
+  for (let n = todayN + 1; n <= targetN; n++) {
+    if (dmon(n) !== month) { month = dmon(n); cum = 0; }
+    const r = energy(cum, daily);
+    for (const p of r.parts) {
+      const row = bySlab.get(p.slab) || { slab: p.slab, units: 0, cost: 0 };
+      row.units += p.units; row.cost += p.cost; bySlab.set(p.slab, row);
+    }
+    e += r.cost; cum += daily; units += daily;
+  }
+  const base = BASE_RATE * units, premium = e - base;
+  const fixed = fixedDue ? FIXED : 0, v = vat(e);
+  const gross = e + v + fixed;
+  return { days: Math.max(0, targetN - todayN), units, energy: e, base, premium, fixed, vat: v,
+           gross, balance, amount: Math.max(0, gross - balance),
+           bySlab: [...bySlab.values()].sort((a, b) => a.slab - b.slab) };
+}
+
+/**
+ * Item 4. Identical consumption, identical calendar-month slab counter, two habits.
+ * low-balance : recharge `lowAmt` at the start of any day whose balance is below `thr`
+ * monthly     : recharge `monAmt` on the 1st of each month
+ */
+function habits(days, opening, thr, lowAmt, monAmt) {
+  let bal = opening, cum = 0, cur = null;
+  const taken = new Set(), aRec = new Map();
+  for (const { n, units } of days) {                 // decide habit A day by day
+    const key = dmon(n);
+    if (key !== cur) { if (cur !== null) cum = 0; cur = key; }
+    if (bal < thr) {
+      bal += lowAmt; aRec.set(n, lowAmt);
+      if (!taken.has(key)) { taken.add(key); bal -= FIXED; }
+    }
+    const e = energy(cum, units).cost;
+    bal -= e + vat(e); cum += units;
+  }
+  const bRec = new Map();
+  for (const { n } of days) if (dday(n) === 1) bRec.set(n, monAmt);
+
+  const low = simulate(days, aRec, opening), monthly = simulate(days, bRec, opening);
+  const diff = low.cost - monthly.cost;
+  return { low, monthly, aRec, bRec, diff,
+           cheaper: diff < 0 ? "low" : diff > 0 ? "monthly" : "equal",
+           saving: Math.abs(diff),
+           sameEnergy: low.energy === monthly.energy && low.vat === monthly.vat };
+}
+
+/* =======================================================================
+   Charts. Plain SVG, sized to the container, redrawn on resize.
+   ======================================================================= */
+const SVGNS = "http://www.w3.org/2000/svg";
+const el = (tag, attrs = {}, parent = null) => {
+  const e = document.createElementNS(SVGNS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+};
+const niceStep = span => {
+  const raw = span / 5, mag = Math.pow(10, Math.floor(Math.log10(raw))), r = raw / mag;
+  return (r >= 5 ? 5 : r >= 2 ? 2 : 1) * mag;
+};
+
+/**
+ * One or more balance lines over a shared day range, with recharge markers,
+ * month rules, a zero line and a hover crosshair.
+ */
+function balanceChart(box, series, opts = {}) {
+  const draw = () => {
+    box.querySelectorAll("svg,.tip").forEach(n => n.remove());
+    const W = Math.max(320, box.clientWidth), H = opts.height || 300;
+    const pad = { l: 58, r: 14, t: 14, b: 26 };
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: "img",
+                            "aria-label": opts.aria || "Meter balance over time" }, box);
+    const all = series.flatMap(s => s.points);
+    if (!all.length) return;
+    const n0 = Math.min(...all.map(p => p.n)), n1 = Math.max(...all.map(p => p.n));
+    let lo = Math.min(0, ...all.map(p => p.balance)), hi = Math.max(...all.map(p => p.balance));
+    const step = niceStep(Math.max(hi - lo, TK));
+    lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+    if (hi === lo) hi = lo + step;
+    const X = n => pad.l + (n - n0) / Math.max(1, n1 - n0) * (W - pad.l - pad.r);
+    const Y = v => H - pad.b - (v - lo) / (hi - lo) * (H - pad.t - pad.b);
+
+    for (let v = lo; v <= hi + 1; v += step) {                       // recessive grid
+      el("line", { x1: pad.l, x2: W - pad.r, y1: Y(v), y2: Y(v),
+                   stroke: "var(--grid)", "stroke-width": 1 }, svg);
+      el("text", { x: pad.l - 8, y: Y(v) + 4, "text-anchor": "end", fill: "var(--muted)",
+                   "font-size": 11, "font-family": "var(--mono)" }, svg)
+        .textContent = fmt(v, 0);
+    }
+    for (let n = n0; n <= n1; n++) {                                 // month starts
+      if (dday(n) !== 1 && n !== n0) continue;
+      if (n !== n0) el("line", { x1: X(n), x2: X(n), y1: pad.t, y2: H - pad.b,
+                                 stroke: "var(--grid)", "stroke-width": 1 }, svg);
+      el("text", { x: X(n) + 4, y: H - pad.b + 15, fill: "var(--muted)", "font-size": 11,
+                   "font-family": "var(--cond)" }, svg)
+        .textContent = MONTHNAMES[+dmon(n).slice(5) - 1].slice(0, 3);
+    }
+    /* zero is the line that matters on a prepaid meter: below it the supply is gone */
+    const zeroShown = lo < 0;
+    if (zeroShown) {
+      const defs = el("defs", {}, svg);
+      const clipAbove = el("clipPath", { id: "above" + box.id }, defs);
+      el("rect", { x: pad.l, y: pad.t, width: W - pad.l - pad.r, height: Math.max(0, Y(0) - pad.t) }, clipAbove);
+      const clipBelow = el("clipPath", { id: "below" + box.id }, defs);
+      el("rect", { x: pad.l, y: Y(0), width: W - pad.l - pad.r, height: Math.max(0, H - pad.b - Y(0)) }, clipBelow);
+    }
+
+    series.forEach(s => {
+      const pts = s.points;
+      if (s.fill) {
+        const d = "M" + X(pts[0].n) + "," + Y(0) + pts.map(p => "L" + X(p.n) + "," + Y(p.balance)).join("") +
+                  "L" + X(pts[pts.length - 1].n) + "," + Y(0) + "Z";
+        el("path", { d, fill: s.fill, stroke: "none",
+                     ...(zeroShown ? { "clip-path": `url(#above${box.id})` } : {}) }, svg);
+        // the same area below the line reads as arrears, not as credit
+        if (zeroShown) el("path", { d, fill: "var(--tint-neg)", stroke: "none",
+                                    "clip-path": `url(#below${box.id})` }, svg);
+      }
+      el("path", { d: "M" + pts.map(p => X(p.n) + "," + Y(p.balance)).join("L"),
+                   fill: "none", stroke: s.color, "stroke-width": 2,
+                   "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
+      (s.marks || []).forEach(m => {
+        el("line", { x1: X(m.n), x2: X(m.n), y1: Y(m.balance), y2: Y(m.balance) - 9,
+                     stroke: s.markColor || "var(--s2)", "stroke-width": 1.5 }, svg);
+        el("circle", { cx: X(m.n), cy: Y(m.balance) - 11, r: 4, fill: s.markColor || "var(--s2)",
+                       stroke: "var(--surface)", "stroke-width": 2 }, svg);
+      });
+      const last = pts[pts.length - 1];
+      el("circle", { cx: X(last.n), cy: Y(last.balance), r: 4.5, fill: s.color,
+                     stroke: "var(--surface)", "stroke-width": 2 }, svg);
+    });
+    if (zeroShown) {
+      el("line", { x1: pad.l, x2: W - pad.r, y1: Y(0), y2: Y(0),
+                   stroke: "var(--critical)", "stroke-width": 1.5 }, svg);
+      el("text", { x: W - pad.r - 2, y: Y(0) - 6, "text-anchor": "end", fill: "var(--critical)",
+                   "font-size": 11, "font-family": "var(--cond)" }, svg).textContent = "empty";
+    }
+
+    /* hover layer */
+    const tip = document.createElement("div");
+    tip.className = "tip"; box.appendChild(tip);
+    const cross = el("line", { y1: pad.t, y2: H - pad.b, stroke: "var(--muted)",
+                               "stroke-width": 1, "stroke-dasharray": "3 3", opacity: 0 }, svg);
+    const dots = series.map(s => el("circle", { r: 4.5, fill: s.color, stroke: "var(--surface)",
+                                                "stroke-width": 2, opacity: 0 }, svg));
+    const hit = el("rect", { x: pad.l, y: pad.t, width: W - pad.l - pad.r, height: H - pad.t - pad.b,
+                             fill: "transparent" }, svg);
+    const move = ev => {
+      const r = box.getBoundingClientRect();
+      const px = (ev.clientX - r.left) * (W / r.width);
+      const n = Math.round(n0 + (px - pad.l) / (W - pad.l - pad.r) * (n1 - n0));
+      const nc = Math.min(n1, Math.max(n0, n));
+      cross.setAttribute("x1", X(nc)); cross.setAttribute("x2", X(nc));
+      cross.setAttribute("opacity", 1);
+      let top = Infinity;
+      const rows = series.map((s, i) => {
+        const p = s.byDay.get(nc);
+        if (!p) { dots[i].setAttribute("opacity", 0); return null; }
+        dots[i].setAttribute("cx", X(p.n)); dots[i].setAttribute("cy", Y(p.balance));
+        dots[i].setAttribute("opacity", 1);
+        top = Math.min(top, Y(p.balance));
+        return { s, p };
+      }).filter(Boolean);
+      if (!rows.length) return;
+      tip.innerHTML = opts.tip(rows, nc);
+      tip.style.opacity = 1;
+      tip.style.left = Math.min(box.clientWidth - 90, Math.max(90, X(nc) * (box.clientWidth / W))) + "px";
+      tip.style.top = Math.max(46, top * (box.clientHeight / H) - 12) + "px";
+    };
+    hit.addEventListener("pointermove", move);
+    hit.addEventListener("pointerleave", () => {
+      tip.style.opacity = 0; cross.setAttribute("opacity", 0);
+      dots.forEach(d => d.setAttribute("opacity", 0));
+    });
+  };
+  draw();
+  if (box._ro) box._ro.disconnect();
+  box._ro = new ResizeObserver(() => draw());
+  box._ro.observe(box);
+}
+
+/* =======================================================================
+   Rendering
+   ======================================================================= */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+const slabVar = i => `var(--slab${i + 1})`;
+let H, S, TODAY_N;                                 // current household, its rebuild, its "today"
+
+function prep(h) {
+  const start = dnum(h.start);
+  const days = h.units.map((u, i) => ({ n: start + i, units: u }));
+  const rec = new Map();
+  for (const [d, a] of h.recharges) {
+    const n = dnum(d);
+    rec.set(n, (rec.get(n) || 0) + tkOf(a));
+  }
+  return { days, rec };
+}
+
+function buildPicker() {
+  $("pick").innerHTML = HOUSEHOLDS.map((h, i) =>
+    `<option value="${i}">${esc(h.name)}</option>`).join("");
+}
+
+function tariffTable() {
+  $("tarifftable").innerHTML =
+    "<thead><tr><th>Units in the month</th><th>Rate</th><th>What it adds over 4.63</th></tr></thead><tbody>" +
+    SLABS.map((s, i) =>
+      `<tr><td><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${slabVar(i)};margin-right:8px"></i>${slabLabel(i)}</td>
+        <td class="money">${fmt(s.rate)}</td>
+        <td class="money">${i ? "+" + fmt(s.rate - BASE_RATE) : "\u2014"}</td></tr>`).join("") +
+    `<tr class="total"><td>Demand charge + meter rent</td><td class="money">${fmt(FIXED)}</td><td class="tiny">once a month, at the first recharge</td></tr>
+     <tr><td>VAT</td><td class="money">5%</td><td class="tiny">of the energy amount</td></tr></tbody>`;
+}
+
+/* -------------------------------------------------------- item 1 render -- */
+function renderHousehold() {
+  const ms = [...S.months.values()];
+  const light = ms.reduce((a, b) => (b.units < a.units ? b : a));
+  const heavy = ms.reduce((a, b) => (b.units > a.units ? b : a));
+  const lateBig = ms.filter(m => {
+    const inMonth = S.ledger.filter(x => x.month === m.month && x.recharge > 0);
+    const late = inMonth.filter(x => dday(x.n) >= new Date(Date.UTC(+m.month.slice(0,4), +m.month.slice(5), 0)).getUTCDate() - 6);
+    const lateSum = late.reduce((a, x) => a + x.recharge, 0);
+    return lateSum >= 1500 * TK && lateSum >= m.recharged * 0.5;
+  });
+
+  $("monthbadges").innerHTML =
+    `<span class="pill">${ms.length} months of daily readings</span>` +
+    `<span class="pill"><i class="dot" style="background:var(--slab1)"></i>Lightest &mdash; ${monLabel(light.month)}, ${light.units} units</span>` +
+    `<span class="pill"><i class="dot" style="background:var(--slab5)"></i>Heaviest &mdash; ${monLabel(heavy.month)}, ${heavy.units} units</span>` +
+    (lateBig.length
+      ? `<span class="pill warning"><i class="dot" style="background:var(--s2)"></i>Big recharge in the last week &mdash; ${lateBig.map(m => monLabel(m.month)).join(", ")}</span>`
+      : "");
+
+  const maxU = Math.max(...ms.map(m => m.units));
+  $("monthtable").innerHTML =
+    `<thead><tr><th>Month</th><th>Units</th><th style="width:180px">Daily readings</th><th>Top slab reached</th>
+      <th>Energy</th><th>VAT</th><th>Fixed</th><th>Bill</th><th>Recharged</th><th>Balance at month end</th></tr></thead><tbody>` +
+    ms.map(m => {
+      const rows = S.ledger.filter(x => x.month === m.month);
+      const mx = Math.max(...rows.map(r => r.units), 1);
+      const spark = rows.map((r, i) =>
+        `<rect x="${i * (170 / rows.length)}" y="${20 - (r.units / mx) * 18}" width="${Math.max(1.2, 170 / rows.length - 1)}"
+           height="${(r.units / mx) * 18}" fill="${slabVar(r.slab)}"></rect>`).join("");
+      const top = Math.max(...rows.map(r => r.slab));
+      return `<tr>
+        <td>${monLabel(m.month)}</td>
+        <td class="n">${m.units}</td>
+        <td><svg viewBox="0 0 170 20" width="170" height="20" role="img" aria-label="daily units, ${m.units} in the month">${spark}</svg></td>
+        <td><span class="pill" style="border-color:${slabVar(top)}"><i class="dot" style="background:${slabVar(top)}"></i>${slabLabel(top)} @ ${fmt(SLABS[top].rate)}</span></td>
+        <td class="money">${fmt(m.energy)}</td>
+        <td class="money">${fmt(m.vat)}</td>
+        <td class="money">${fmt(m.fixed)}</td>
+        <td class="money">${fmt(m.energy + m.vat + m.fixed)}</td>
+        <td class="money">${fmt(m.recharged)}${m.count ? ` <span class="tiny">&times;${m.count}</span>` : ""}</td>
+        <td class="money ${m.end < 0 ? "neg" : ""}">${fmt(m.end)}</td></tr>`;
+    }).join("") +
+    `<tr class="total"><td>Total</td><td class="n">${S.units}</td><td></td><td></td>
+      <td class="money">${fmt(S.energy)}</td><td class="money">${fmt(S.vat)}</td>
+      <td class="money">${fmt(S.fixed)}</td><td class="money">${fmt(S.cost)}</td>
+      <td class="money">${fmt(S.recharged)}</td><td class="money ${S.end < 0 ? "neg" : ""}">${fmt(S.end)}</td></tr></tbody>`;
+  void maxU;
+
+  const recs = S.ledger.filter(x => x.recharge > 0);
+  $("rechargetable").innerHTML =
+    `<thead><tr><th>Date</th><th>Amount</th><th>Demand + rent taken</th><th>Balance after</th><th>Units used in the month so far</th></tr></thead><tbody>` +
+    recs.map(x => `<tr><td>${dateLabel(x.date)}</td><td class="money">${fmt(x.recharge)}</td>
+      <td class="money">${x.fixed ? fmt(x.fixed) : "\u2014"}</td>
+      <td class="money ${x.balance < 0 ? "neg" : ""}">${fmt(x.balance)}</td>
+      <td class="n">${x.cumBefore}</td></tr>`).join("") + "</tbody>";
+}
+
+/* -------------------------------------------------------- item 2 render -- */
+function renderLedger() {
+  const pts = S.ledger.map(x => ({ n: x.n, balance: x.balance }));
+  const byDay = new Map(S.ledger.map(x => [x.n, x]));
+  balanceChart($("balchart"), [{
+    color: "var(--s1)", fill: "var(--tint-s1)", points: pts, byDay,
+    marks: S.ledger.filter(x => x.recharge > 0), markColor: "var(--s2)",
+  }], {
+    height: 320,
+    aria: "Meter balance rebuilt day by day, with every recharge marked",
+    tip: rows => {
+      const x = rows[0].p;
+      return `<div class="t-date">${dateLabel(x.date)}</div><dl>
+        <dt>Balance</dt><dd>${fmt(x.balance)}</dd>
+        <dt>Units</dt><dd>${x.units}</dd>
+        <dt>Month to date</dt><dd>${x.cum}</dd>
+        <dt>Slab</dt><dd>${slabLabel(x.slab)} @ ${fmt(SLABS[x.slab].rate)}</dd>
+        <dt>Energy</dt><dd>${fmt(x.energy)}</dd>
+        <dt>VAT</dt><dd>${fmt(x.vat)}</dd>
+        ${x.recharge ? `<dt>Recharge</dt><dd>+${fmt(x.recharge)}</dd>` : ""}
+        ${x.fixed ? `<dt>Demand + rent</dt><dd>-${fmt(x.fixed)}</dd>` : ""}</dl>`;
+    },
+  });
+
+  $("daytable").innerHTML =
+    `<thead><tr><th>Date</th><th>Units</th><th>Month to date</th><th>Slab</th><th>Rate</th>
+      <th>Energy</th><th>VAT</th><th>Recharge</th><th>Demand + rent</th><th>Balance</th></tr></thead><tbody>` +
+    S.ledger.map(x => `<tr>
+      <td>${x.date}</td><td class="n">${x.units}</td><td class="n">${x.cum}</td>
+      <td><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${slabVar(x.slab)};margin-right:6px"></i>${slabLabel(x.slab)}</td>
+      <td class="money">${fmt(SLABS[x.slab].rate)}</td>
+      <td class="money">${fmt(x.energy)}</td><td class="money">${fmt(x.vat)}</td>
+      <td class="money">${x.recharge ? "+" + fmt(x.recharge) : "\u2014"}</td>
+      <td class="money">${x.fixed ? "-" + fmt(x.fixed) : "\u2014"}</td>
+      <td class="money ${x.balance < 0 ? "neg" : ""}">${fmt(x.balance)}</td></tr>`).join("") + "</tbody>";
+}
+
+/* -------------------------------------------------------- item 3 render -- */
+function renderRunout() {
+  const bal = tkOf(+$("q-bal").value || 0), daily = Math.max(1, +$("q-daily").value || 1);
+  const cum = Math.max(0, +$("q-cum").value || 0);
+  const r = runout(TODAY_N, bal, daily, cum);
+  const box = $("runout");
+  if (r.empty) {
+    box.innerHTML = `<div class="banner critical"><span class="icon">!</span>
+      <div><strong>The meter is already empty.</strong> At ${daily} units a day it costs about
+      ${fmt(energy(cum, daily).cost * 21 / 20)} tk to get through a day at this slab.</div></div>`;
+    return;
+  }
+  if (!r.date) { box.innerHTML = `<div class="banner good"><span class="icon">&#10003;</span>
+    <div>This balance lasts beyond the projection horizon.</div></div>`; return; }
+  const soon = r.days <= 7;
+  const perDay = Math.round((bal) / r.days);
+  box.innerHTML = `
+    <div class="tile hero ${soon ? "warn" : ""}">
+      <span class="label">Runs out on</span>
+      <span class="value">${dateLabel(r.date)}</span>
+      <span class="foot">${r.days} more day${r.days === 1 ? "" : "s"} from ${dateLabel(diso(TODAY_N))}
+        &mdash; last full day ${dateLabel(diso(dnum(r.date) - 1))}.</span>
+    </div>
+    <div class="grid3" style="margin-top:14px">
+      <div class="tile"><span class="label">Burn rate now</span>
+        <span class="value mono">${fmt(perDay)}</span><span class="foot">taka a day at ${daily} units</span></div>
+      <div class="tile"><span class="label">Slab on the last day</span>
+        <span class="value mono">${fmt(SLABS[slabIndex(r.rows[r.rows.length - 1].cum - 1)].rate)}</span>
+        <span class="foot">per unit, ${slabLabel(slabIndex(r.rows[r.rows.length - 1].cum - 1))} band</span></div>
+      <div class="tile"><span class="label">Units before it dies</span>
+        <span class="value mono">${r.days * daily}</span><span class="foot">at ${daily} a day</span></div>
+    </div>`;
+}
+
+function renderNeed() {
+  const bal = tkOf(+$("q-bal").value || 0), daily = Math.max(1, +$("q-daily").value || 1);
+  const cum = Math.max(0, +$("q-cum").value || 0);
+  const targetN = dnum($("q-target").value || diso(TODAY_N + 30));
+  const fixedDue = $("q-fixed").value === "1";
+  const box = $("need");
+  if (targetN <= TODAY_N) {
+    box.innerHTML = `<div class="banner warn"><span class="icon">!</span>
+      <div>Pick a date after ${dateLabel(diso(TODAY_N))}.</div></div>`;
+    return;
+  }
+  const r = needed(TODAY_N, targetN, bal, daily, cum, fixedDue);
+  const seg = [
+    { k: "Energy at the 4.63 rate", v: r.base, c: "var(--s1)" },
+    { k: "Added by higher slabs", v: r.premium, c: "var(--s2)" },
+    { k: "Demand charge + meter rent", v: r.fixed, c: "var(--s3)" },
+    { k: "VAT, 5% of energy", v: r.vat, c: "var(--s4)" },
+  ];
+  box.innerHTML = `
+    <div class="tile hero">
+      <span class="label">Recharge today</span>
+      <span class="value mono">${fmt(r.amount)} <span style="font-size:16px;font-family:var(--sans);font-weight:500">tk</span></span>
+      <span class="foot">covers ${r.days} days to ${dateLabel(diso(targetN))} &mdash;
+        ${r.units} units at ${daily} a day${r.balance > 0 ? `, after the ${fmt(r.balance)} tk already on the meter` : ""}.</span>
+    </div>
+    ${r.amount === 0 ? `<div class="banner good" style="margin-top:12px"><span class="icon">&#10003;</span>
+      <div>The balance already covers it. Nothing needs to go in today.</div></div>` : ""}
+    <div class="breakdown" style="margin-top:16px">
+      <div class="stack" role="img" aria-label="what the recharge is made of">
+        ${seg.filter(s => s.v > 0).map(s => `<i style="flex:${s.v};background:${s.c}"></i>`).join("")}
+      </div>
+      <table><tbody>
+        ${seg.map(s => `<tr><td><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${s.c};margin-right:8px"></i>${s.k}</td>
+          <td class="money">${fmt(s.v)}</td>
+          <td class="tiny">${r.gross ? Math.round(s.v / r.gross * 100) : 0}%</td></tr>`).join("")}
+        <tr class="total"><td>Cost of those ${r.days} days</td><td class="money">${fmt(r.gross)}</td><td></td></tr>
+        <tr><td>${r.balance < 0 ? "Arrears to clear first" : "Balance already on the meter"}</td>
+          <td class="money">${r.balance
+            ? (r.balance < 0 ? "+" + fmt(-r.balance) : "-" + fmt(r.balance))
+            : "\u2014"}</td><td></td></tr>
+        <tr class="total"><td>Put in today</td><td class="money">${fmt(r.amount)}</td><td></td></tr>
+      </tbody></table>
+      <p class="tiny">${r.premium > 0
+        ? `${fmt(r.premium)} tk of this &mdash; ${Math.round(r.premium / r.gross * 100)}% &mdash; exists only because the counter climbs past 75 units.`
+        : "Every unit in this window stays in the first slab."}
+        ${dmon(targetN) !== dmon(TODAY_N)
+          ? ` This window runs into ${monLabel(dmon(targetN))}, where the counter starts again at unit 1
+              &mdash; that is why the later days are cheaper. It is one recharge today, so no later
+              month's demand charge or meter rent is in this figure.`
+          : ""}</p>
+    </div>`;
+}
+
+/* -------------------------------------------------------- item 4 render -- */
+function renderHabits() {
+  const c = H.comparison;
+  const { days } = prep(H);
+  const months = new Set(c.months);
+  const cdays = c.source === "readings" || c.dailyUnits == null
+    ? days.filter(d => months.has(dmon(d.n)))
+    : days.filter(d => months.has(dmon(d.n))).map(d => ({ n: d.n, units: c.dailyUnits }));
+  const opening = tkOf(+$("h-open").value || 0);
+  const r = habits(cdays, opening, tkOf(+$("h-thr").value || 0),
+                   tkOf(+$("h-low").value || 0), tkOf(+$("h-mon").value || 0));
+
+  const label = { low: "Recharging when the balance runs low", monthly: "Recharging on the 1st of each month" };
+  /* equal cost does not mean equal outcome: one habit can still under-fund the meter */
+  const short = [["Low balance", r.low], ["Monthly on the 1st", r.monthly]].filter(x => x[1].end < 0);
+  const deposit = short.length
+    ? ` <span style="display:block;margin-top:6px">Same cost, different outcome:
+        ${short.map(x => `${x[0]} deposits ${fmt(x[1].recharged)} tk and ends
+        ${fmt(-x[1].end)} tk in arrears`).join("; ")} &mdash; the meter would have cut off.
+        Cost is what the meter consumes, not what goes in.</span>`
+    : "";
+  $("verdict").innerHTML = r.cheaper === "equal"
+    ? `<div class="banner"><span class="icon">=</span><div>
+        <strong>Both habits cost exactly the same: ${fmt(r.low.cost)} tk.</strong>
+        Same units, same calendar-month slabs, and the fixed charges fall due in
+        ${r.low.fixedMonths} month${r.low.fixedMonths === 1 ? "" : "s"} either way.
+        Recharge timing cannot buy a cheaper rate &mdash; the slab counter follows the calendar,
+        not the recharge.${deposit}</div></div>`
+    : `<div class="banner good"><span class="icon">&#9662;</span><div>
+        <strong>${label[r.cheaper]} costs ${fmt(r.saving)} tk less</strong> across these three months.
+        Energy and VAT are identical on both sides; the whole difference is that one habit triggers the
+        82 tk demand charge and meter rent in ${r.low.fixedMonths} month${r.low.fixedMonths === 1 ? "" : "s"}
+        and the other in ${r.monthly.fixedMonths}.${deposit}</div></div>`;
+
+  const mk = sim => ({
+    color: "", points: sim.ledger.map(x => ({ n: x.n, balance: x.balance })),
+    byDay: new Map(sim.ledger.map(x => [x.n, x])),
+    marks: sim.ledger.filter(x => x.recharge > 0),
+  });
+  const a = mk(r.low), b = mk(r.monthly);
+  a.color = "var(--s1)"; a.markColor = "var(--s1)";
+  b.color = "var(--s2)"; b.markColor = "var(--s2)";
+  balanceChart($("habitchart"), [a, b], {
+    height: 260,
+    aria: "Balance under the two recharge habits over the three compared months",
+    tip: rows => {
+      const x = rows[0].p;
+      return `<div class="t-date">${dateLabel(x.date)}</div><dl>
+        <dt>Units</dt><dd>${x.units}</dd><dt>Month to date</dt><dd>${x.cum}</dd>
+        <dt>Slab</dt><dd>${slabLabel(x.slab)}</dd>
+        <dt style="color:var(--s1)">Low balance</dt><dd>${fmt(rows[0].p.balance)}</dd>
+        ${rows[1] ? `<dt style="color:var(--s2)">Monthly</dt><dd>${fmt(rows[1].p.balance)}</dd>` : ""}</dl>`;
+    },
+  });
+
+  const card = (cls, title, sub, sim, rec, best) => `
+    <div class="habit ${cls}">
+      <div class="stackrow" style="justify-content:space-between">
+        <h3>${title}</h3>${best ? `<span class="pill good"><i class="dot"></i>cheaper</span>` : ""}
+      </div>
+      <p class="tiny" style="margin-top:2px">${sub}</p>
+      <div class="tile" style="margin-top:10px"><span class="label">Cost to the meter</span>
+        <span class="value mono">${fmt(sim.cost)}</span>
+        <span class="foot">energy ${fmt(sim.energy)} + VAT ${fmt(sim.vat)} + fixed ${fmt(sim.fixed)}</span></div>
+      <table style="margin-top:10px"><tbody>
+        <tr><td>Recharges made</td><td class="n">${rec.size}</td></tr>
+        <tr><td>Months paying demand + rent</td><td class="n">${sim.fixedMonths} of ${c.months.length}</td></tr>
+        <tr><td>Total deposited</td><td class="money">${fmt(sim.recharged)}</td></tr>
+        <tr><td>Left on the meter at the end</td><td class="money ${sim.end < 0 ? "neg" : ""}">${fmt(sim.end)}</td></tr>
+      </tbody></table></div>`;
+  $("habitcards").innerHTML =
+    card("a", "Recharge when low", `${fmt(tkOf(+$("h-low").value || 0))} tk whenever the balance starts a day below ${fmt(tkOf(+$("h-thr").value || 0))} tk`,
+         r.low, r.aRec, r.cheaper === "low") +
+    card("b", "Recharge on the 1st", `${fmt(tkOf(+$("h-mon").value || 0))} tk on the 1st of each month`,
+         r.monthly, r.bRec, r.cheaper === "monthly");
+
+  $("habittable").innerHTML =
+    `<thead><tr><th>Same three months</th><th>Units</th><th>Energy</th><th>VAT</th>
+      <th>Demand + rent</th><th>Cost to the meter</th><th>Deposited</th></tr></thead><tbody>
+     <tr><td><i style="display:inline-block;width:10px;height:3px;background:var(--s1);vertical-align:middle;margin-right:8px"></i>Low balance</td>
+       <td class="n">${r.low.units}</td><td class="money">${fmt(r.low.energy)}</td><td class="money">${fmt(r.low.vat)}</td>
+       <td class="money">${fmt(r.low.fixed)}</td><td class="money">${fmt(r.low.cost)}</td><td class="money">${fmt(r.low.recharged)}</td></tr>
+     <tr><td><i style="display:inline-block;width:10px;height:3px;background:var(--s2);vertical-align:middle;margin-right:8px"></i>Monthly on the 1st</td>
+       <td class="n">${r.monthly.units}</td><td class="money">${fmt(r.monthly.energy)}</td><td class="money">${fmt(r.monthly.vat)}</td>
+       <td class="money">${fmt(r.monthly.fixed)}</td><td class="money">${fmt(r.monthly.cost)}</td><td class="money">${fmt(r.monthly.recharged)}</td></tr>
+     <tr class="total"><td>Difference</td><td class="n">${r.low.units - r.monthly.units}</td>
+       <td class="money">${fmt(r.low.energy - r.monthly.energy)}</td><td class="money">${fmt(r.low.vat - r.monthly.vat)}</td>
+       <td class="money">${fmt(r.low.fixed - r.monthly.fixed)}</td><td class="money">${fmt(r.diff)}</td>
+       <td class="money">${fmt(r.low.recharged - r.monthly.recharged)}</td></tr></tbody>`;
+}
+
+/* ------------------------------------------------ bonus: slab proximity -- */
+function renderSlabs() {
+  const cum = Math.max(0, +$("q-cum").value || 0);
+  const daily = Math.max(1, +$("q-daily").value || 1);
+  const i = slabIndex(cum);
+  const cap = SLABS[i].upto;
+  const toNext = cap === Infinity ? null : cap - cum;
+  const nextRate = cap === Infinity ? null : SLABS[i + 1].rate;
+  const daysToNext = toNext == null ? null : Math.ceil(toNext / daily);
+
+  $("slabwarn").innerHTML = toNext == null
+    ? `<div class="banner"><span class="icon">&#9650;</span><div>This month is already in the top band.
+        Every further unit costs ${fmt(SLABS[i].rate)} tk &mdash;
+        ${((SLABS[i].rate / BASE_RATE - 1) * 100).toFixed(0)}% above the first-slab rate.</div></div>`
+    : toNext <= daily * 4
+      ? `<div class="banner warn"><span class="icon">!</span><div>
+          <strong>${toNext} unit${toNext === 1 ? "" : "s"} left before the next slab</strong> &mdash;
+          about ${daysToNext} day${daysToNext === 1 ? "" : "s"} at ${daily} units a day.
+          After that each unit jumps from ${fmt(SLABS[i].rate)} to ${fmt(nextRate)} tk,
+          ${fmt(nextRate - SLABS[i].rate)} tk more, and it stays there until the 1st.</div></div>`
+      : `<div class="banner"><span class="icon">&#9679;</span><div>
+          ${toNext} units left in the ${slabLabel(i)} band &mdash; roughly ${daysToNext} days at
+          ${daily} a day. The next unit after that costs ${fmt(nextRate)} tk instead of ${fmt(SLABS[i].rate)}.</div></div>`;
+
+  /* each rung is one slab's own capacity; the fill is how much of it this month has eaten */
+  $("ladder").innerHTML = SLABS.map((s, k) => {
+    const lo = slabLo(k);
+    const open = s.upto === Infinity;
+    const size = open ? Math.max(100, cum - lo + 1) : s.upto - lo + 1;
+    const used = Math.max(0, Math.min(cum, open ? Infinity : s.upto) - lo + 1);
+    return `<div class="rung ${k === i ? "here" : ""}">
+      <span class="rng">${slabLabel(k)}</span>
+      <span style="display:block;background:var(--grid);border-radius:3px">
+        <i class="bar" style="display:block;width:${Math.min(100, used / size * 100)}%;background:${slabVar(k)}"></i></span>
+      <span class="rng" style="text-align:right">${used}${open ? "" : "/" + size}</span>
+      <span class="rate">${fmt(s.rate)}${k === i ? " \u2190 now" : ""}</span></div>`;
+  }).join("");
+
+  const parts = energy(0, cum).parts;
+  const total = parts.reduce((a, p) => a + p.cost, 0);
+  $("slabspend").innerHTML = cum === 0
+    ? `<p class="small">No units on this month's counter yet.</p>`
+    : `<div class="stack" role="img" aria-label="this month's units priced by slab">
+        ${parts.map(p => `<i style="flex:${p.cost};background:${slabVar(p.slab)}"></i>`).join("")}</div>
+      <table><tbody>${parts.map(p => `<tr>
+        <td><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${slabVar(p.slab)};margin-right:8px"></i>${slabLabel(p.slab)} @ ${fmt(SLABS[p.slab].rate)}</td>
+        <td class="n">${p.units} units</td><td class="money">${fmt(p.cost)}</td></tr>`).join("")}
+        <tr class="total"><td>Energy so far this month</td><td class="n">${cum} units</td><td class="money">${fmt(total)}</td></tr>
+        <tr><td class="tiny">Same units at the 4.63 rate throughout</td><td></td><td class="money">${fmt(BASE_RATE * cum)}</td></tr>
+        <tr class="total"><td>Cost of climbing the slabs</td><td></td><td class="money">${fmt(total - BASE_RATE * cum)}</td></tr>
+      </tbody></table>`;
+}
+
+/* ------------------------------------------------- bonus: monthly bill --- */
+function renderBill() {
+  const key = $("billmonth").value;
+  const m = S.months.get(key);
+  if (!m) return;
+  const seg = [
+    { k: "Energy", v: m.energy, c: "var(--s1)", note: `${m.units} units` },
+    { k: "Demand charge", v: m.fixed ? DEMAND : 0, c: "var(--s2)", note: m.fixed ? "taken at the first recharge" : "no recharge this month" },
+    { k: "Meter rent", v: m.fixed ? RENT : 0, c: "var(--s3)", note: m.fixed ? "taken at the first recharge" : "no recharge this month" },
+    { k: "VAT", v: m.vat, c: "var(--s4)", note: "5% of energy" },
+  ];
+  const total = seg.reduce((a, s) => a + s.v, 0);
+  const parts = energy(0, m.units).parts;
+  $("billout").innerHTML = `
+    <div class="grid2">
+      <div class="breakdown">
+        <div class="tile"><span class="label">${monLabel(key)} &mdash; what the meter took</span>
+          <span class="value mono">${fmt(total)}</span>
+          <span class="foot">${m.units} units &middot; ${m.count} recharge${m.count === 1 ? "" : "s"} totalling ${fmt(m.recharged)} tk</span></div>
+        <div class="stack" role="img" aria-label="the month's bill by component">
+          ${seg.filter(s => s.v > 0).map(s => `<i style="flex:${s.v};background:${s.c}"></i>`).join("")}</div>
+        <table><tbody>
+          ${seg.map(s => `<tr><td><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${s.c};margin-right:8px"></i>${s.k}</td>
+            <td class="money">${fmt(s.v)}</td><td class="tiny">${s.note}</td></tr>`).join("")}
+          <tr class="total"><td>Total for the month</td><td class="money">${fmt(total)}</td><td></td></tr>
+          <tr><td>Average per unit</td><td class="money">${fmt(Math.round(total / Math.max(1, m.units)))}</td>
+            <td class="tiny">against a 4.63 first-slab rate</td></tr>
+        </tbody></table>
+      </div>
+      <div class="breakdown">
+        <h3>The energy half, by slab</h3>
+        <div class="stack" role="img" aria-label="energy by slab">
+          ${parts.map(p => `<i style="flex:${p.cost};background:${slabVar(p.slab)}"></i>`).join("")}</div>
+        <table><tbody>${parts.map(p => `<tr>
+          <td><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${slabVar(p.slab)};margin-right:8px"></i>${slabLabel(p.slab)} @ ${fmt(SLABS[p.slab].rate)}</td>
+          <td class="n">${p.units}</td><td class="money">${fmt(p.cost)}</td></tr>`).join("")}
+          <tr class="total"><td>Energy</td><td class="n">${m.units}</td><td class="money">${fmt(m.energy)}</td></tr>
+        </tbody></table>
+        <p class="tiny">At the first-slab rate all ${m.units} units would have cost ${fmt(BASE_RATE * m.units)} tk.
+          Climbing the slabs added ${fmt(m.energy - BASE_RATE * m.units)} tk.</p>
+      </div>
+    </div>`;
+}
+
+/* --------------------------------------- bonus: reconcile with the meter -- */
+function parsePairs(text) {
+  const out = [], bad = [];
+  text.split(/\n+/).forEach(line => {
+    const t = line.trim();
+    if (!t) return;
+    const m = t.match(/^(\d{4}-\d{2}-\d{2})\s*[,;\t ]\s*(-?[\d,]+(?:\.\d+)?)/);
+    if (!m) { bad.push(t); return; }
+    out.push([m[1], parseFloat(m[2].replace(/,/g, ""))]);
+  });
+  return { out, bad };
+}
+
+function resetReconcile() {
+  $("r-rec").value = H.recharges.map(([d, a]) => `${d}, ${a.toFixed(2)}`).join("\n");
+  $("r-open").value = H.opening.toFixed(2);
+  $("r-obs").value = "";
+  $("r-out").innerHTML = "";
+}
+
+function runReconcile() {
+  const { days } = prep(H);
+  const recs = parsePairs($("r-rec").value), obs = parsePairs($("r-obs").value);
+  const rec = new Map();
+  for (const [d, a] of recs.out) {
+    const n = dnum(d);
+    rec.set(n, (rec.get(n) || 0) + tkOf(a));
+  }
+  const sim = simulate(days, rec, tkOf(+$("r-open").value || 0));
+  const byDay = new Map(sim.ledger.map(x => [x.n, x]));
+  const rows = obs.out.map(([d, v]) => {
+    const x = byDay.get(dnum(d));
+    return x ? { date: d, shown: tkOf(v), rebuilt: x.balance, diff: tkOf(v) - x.balance } : { date: d, missing: true };
+  });
+  const good = rows.filter(r => !r.missing);
+  const worst = good.length ? Math.max(...good.map(r => Math.abs(r.diff))) : 0;
+  const mean = good.length ? Math.round(good.reduce((a, r) => a + Math.abs(r.diff), 0) / good.length) : 0;
+
+  $("r-out").innerHTML = `
+    ${recs.bad.length ? `<div class="banner warn"><span class="icon">!</span><div>
+      Could not read ${recs.bad.length} recharge line${recs.bad.length === 1 ? "" : "s"}. Each line needs a
+      date and an amount, like <code>2026-05-06, 2000</code>. Skipped: ${recs.bad.slice(0, 3).map(esc).join(" &middot; ")}</div></div>` : ""}
+    <div class="grid3" style="margin:14px 0">
+      <div class="tile"><span class="label">Recharges read</span><span class="value mono">${recs.out.length}</span>
+        <span class="foot">${fmt(sim.recharged)} tk deposited</span></div>
+      <div class="tile"><span class="label">Rebuilt balance on ${dateLabel(sim.ledger[sim.ledger.length - 1].date)}</span>
+        <span class="value mono">${fmt(sim.end)}</span>
+        <span class="foot">${fmt(sim.cost)} tk consumed over ${sim.units} units</span></div>
+      <div class="tile"><span class="label">Months charged demand + rent</span>
+        <span class="value mono">${sim.fixedMonths}</span><span class="foot">${fmt(sim.fixed)} tk in fixed charges</span></div>
+    </div>
+    ${good.length ? `
+      <div class="banner ${worst <= 100 ? "good" : worst <= 5 * TK ? "" : "warn"}">
+        <span class="icon">${worst <= 100 ? "&#10003;" : "&#8776;"}</span>
+        <div>Across ${good.length} meter reading${good.length === 1 ? "" : "s"} the rebuild is off by
+        ${fmt(mean)} tk on average, ${fmt(worst)} tk at worst.
+        ${worst <= 100 ? "That is a match." : "A steady gap usually means a recharge is missing from the list, or the meter took its fixed charges on a different day."}</div></div>
+      <div class="tablebox" style="margin-top:14px"><table>
+        <thead><tr><th>Date</th><th>Meter showed</th><th>Rebuilt</th><th>Difference</th></tr></thead><tbody>
+        ${rows.map(r => r.missing
+          ? `<tr><td>${esc(r.date)}</td><td colspan="3" class="tiny">outside the reading range</td></tr>`
+          : `<tr><td>${dateLabel(r.date)}</td><td class="money">${fmt(r.shown)}</td>
+             <td class="money">${fmt(r.rebuilt)}</td>
+             <td class="money ${Math.abs(r.diff) > 100 ? "neg" : ""}">${Math.abs(r.diff) < 50 ? "0.00" : (r.diff > 0 ? "+" : "") + fmt(r.diff)}</td></tr>`).join("")}
+        </tbody></table></div>` : `<p class="small">Add the balances the meter showed on a few dates to see
+        how close the rebuild is.</p>`}
+    <div class="legend" style="margin:16px 0 8px">
+      <span class="key"><i class="swatch" style="background:var(--s1)"></i> Rebuilt from the pasted history</span>
+      ${good.length ? `<span class="key"><i class="swatch dot" style="background:var(--s3)"></i> What the meter showed</span>` : ""}
+    </div>
+    <div class="chartbox" id="rchart"></div>`;
+
+  const pts = sim.ledger.map(x => ({ n: x.n, balance: x.balance }));
+  balanceChart($("rchart"), [{ color: "var(--s1)", fill: "var(--tint-s1)", points: pts, byDay,
+    marks: sim.ledger.filter(x => x.recharge > 0), markColor: "var(--s2)" }], {
+    height: 260, aria: "Balance rebuilt from the pasted recharge history",
+    tip: r => { const x = r[0].p; return `<div class="t-date">${dateLabel(x.date)}</div><dl>
+      <dt>Rebuilt</dt><dd>${fmt(x.balance)}</dd><dt>Units</dt><dd>${x.units}</dd>
+      <dt>Month to date</dt><dd>${x.cum}</dd></dl>`; },
+  });
+  // observed readings drawn on top of the rebuilt line
+  const svg = $("rchart").querySelector("svg");
+  if (svg && good.length) {
+    const vb = svg.viewBox.baseVal, W = vb.width, Hh = vb.height;
+    const pad = { l: 58, r: 14, t: 14, b: 26 };
+    const n0 = pts[0].n, n1 = pts[pts.length - 1].n;
+    const vals = pts.map(p => p.balance).concat(good.map(g => g.shown));
+    let lo = Math.min(0, ...vals), hi = Math.max(...vals);
+    const step = niceStep(Math.max(hi - lo, TK));
+    lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+    good.forEach(g => {
+      const n = dnum(g.date);
+      const x = pad.l + (n - n0) / Math.max(1, n1 - n0) * (W - pad.l - pad.r);
+      const y = Hh - pad.b - (g.shown - lo) / (hi - lo) * (Hh - pad.t - pad.b);
+      el("circle", { cx: x, cy: y, r: 5, fill: "var(--s3)", stroke: "var(--surface)", "stroke-width": 2 }, svg);
+    });
+  }
+}
+
+/* ---------------------------------------------------------------- wiring -- */
+function renderAnswers() {
+  const bal = S.end, cum = S.ledger[S.ledger.length - 1].cum;
+  const daily = H.daily;
+  const r = runout(TODAY_N, bal, daily, cum);
+  const recMonth = S.ledger.some(x => x.month === dmon(TODAY_N) && x.recharge > 0);
+  const nd = needed(TODAY_N, dnum(H.target), bal, daily, cum, !recMonth);
+  $("tiles").innerHTML = `
+    <div class="tile hero"><span class="label">On the meter today, ${dateLabel(diso(TODAY_N))}</span>
+      <span class="value mono">${fmt(bal)}</span>
+      <span class="foot">${cum} units used since the 1st &mdash; now in the ${slabLabel(slabIndex(cum))} band
+        at ${fmt(SLABS[slabIndex(cum)].rate)} tk a unit</span></div>
+    <div class="tile hero ${r.date && r.days <= 10 ? "warn" : ""}">
+      <span class="label">Runs out on</span>
+      <span class="value">${r.empty ? "already empty" : r.date ? dateLabel(r.date) : "beyond a year"}</span>
+      <span class="foot">${r.empty ? "the meter is in arrears" : r.days + " days at " + daily + " units a day, with no recharge"}</span></div>
+    <div class="tile hero"><span class="label">To last until ${dateLabel(H.target)}</span>
+      <span class="value mono">${fmt(nd.amount)}</span>
+      <span class="foot">${nd.premium > 0 ? fmt(nd.premium) + " tk of it is the higher slabs alone" : "all of it in the first slab"}</span></div>`;
+
+  const w = slabIndex(cum), cap = SLABS[w].upto;
+  $("slabnote").innerHTML = cap === Infinity ? "" : `
+    <div class="banner ${cap - cum <= daily * 4 ? "warn" : ""}">
+      <span class="icon">${cap - cum <= daily * 4 ? "!" : "&#9679;"}</span>
+      <div>${cap - cum} more unit${cap - cum === 1 ? "" : "s"} this month &mdash; about
+        ${Math.ceil((cap - cum) / daily)} day${Math.ceil((cap - cum) / daily) === 1 ? "" : "s"} &mdash;
+        and the rate goes from ${fmt(SLABS[w].rate)} to ${fmt(SLABS[w + 1].rate)} tk a unit for the rest of
+        ${monLabel(dmon(TODAY_N))}. The counter drops back to zero on the 1st.</div></div>`;
+}
+
+function loadHousehold(i) {
+  H = HOUSEHOLDS[i];
+  const { days, rec } = prep(H);
+  S = simulate(days, rec, tkOf(H.opening));
+  TODAY_N = dnum(H.today);
+
+  $("pickmeta").textContent =
+    `${H.units.length} daily readings, ${H.start} to ${H.today} \u00b7 ${H.recharges.length} recharges \u00b7 opening balance ${H.opening.toFixed(2)} tk`;
+
+  const last = S.ledger[S.ledger.length - 1];
+  $("q-bal").value = (Math.round(S.end / 100) / 100).toFixed(2);
+  $("q-daily").value = H.daily;
+  $("q-cum").value = last.cum;
+  $("q-target").value = H.target;
+  $("q-target").min = diso(TODAY_N + 1);
+  $("q-fixed").value = S.ledger.some(x => x.month === dmon(TODAY_N) && x.recharge > 0) ? "0" : "1";
+
+  const c = H.comparison;
+  $("h-thr").value = c.threshold; $("h-low").value = c.lowAmount;
+  $("h-mon").value = c.monthlyAmount; $("h-open").value = c.opening;
+
+  $("billmonth").innerHTML = [...S.months.keys()].map(k =>
+    `<option value="${k}">${monLabel(k)}</option>`).join("");
+  $("billmonth").value = dmon(TODAY_N);
+
+  renderAnswers(); renderHousehold(); renderLedger();
+  renderRunout(); renderNeed(); renderSlabs(); renderHabits(); renderBill();
+  resetReconcile();
+}
+
+function init() {
+  buildPicker();
+  tariffTable();
+  $("pick").addEventListener("change", e => loadHousehold(+e.target.value));
+  ["q-bal", "q-daily", "q-cum"].forEach(id =>
+    $(id).addEventListener("input", () => { renderRunout(); renderNeed(); renderSlabs(); }));
+  ["q-target", "q-fixed"].forEach(id => $(id).addEventListener("input", renderNeed));
+  ["h-thr", "h-low", "h-mon", "h-open"].forEach(id => $(id).addEventListener("input", renderHabits));
+  $("billmonth").addEventListener("change", renderBill);
+  $("r-run").addEventListener("click", runReconcile);
+  $("r-reset").addEventListener("click", () => { resetReconcile(); });
+  $("r-self").addEventListener("click", () => {
+    const pick = S.ledger.filter((_, i) => i % Math.max(1, Math.floor(S.ledger.length / 6)) === 0).slice(0, 6);
+    $("r-obs").value = pick.map(x => `${x.date}, ${(Math.round(x.balance / 100) / 100).toFixed(2)}`).join("\n");
+    runReconcile();
+  });
+  loadHousehold(0);
+}
+init();
+</script>
+</body>
+</html>

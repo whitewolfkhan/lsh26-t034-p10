@@ -1,0 +1,1341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prepaid Meter Advisor</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+/* ---------------------------------------------------------------- tokens --
+   Light is the base palette. Dark is redefined twice: once for the OS setting
+   (guarded so an explicit light stamp still wins) and once for the theme stamp. */
+:root {
+  --page:      #f1f3f7;
+  --surface:   #ffffff;
+  --sunken:    #e8ecf2;
+  --ink:       #10141a;
+  --ink-2:     #4c545f;
+  --muted:     #7d8794;
+  --grid:      #e2e6ec;
+  --rule:      #d6dce4;
+  --ring:      rgba(16,20,26,0.10);
+  --shadow:    0 1px 2px rgba(16,20,26,.05), 0 8px 24px -16px rgba(16,20,26,.28);
+
+  --s1:  #2a78d6;   /* balance / low-balance habit   */
+  --s2:  #eb6834;   /* recharges / monthly habit     */
+  --s3:  #1baf7a;   /* meter's own reading           */
+  --s4:  #eda100;   /* VAT                           */
+  --good:     #0ca30c;
+  --warning:  #fab219;
+  --serious:  #ec835a;
+  --critical: #d03b3b;
+
+  /* slab ramp: one hue, cheap -> expensive, light -> dark */
+  --slab1: #86b6ef; --slab2: #5598e7; --slab3: #2a78d6;
+  --slab4: #1c5cab; --slab5: #104281; --slab6: #0d366b;
+  --slab-ink: #ffffff;
+
+  --tint-s1: rgba(42,120,214,.12);
+  --tint-neg: rgba(208,59,59,.10);
+
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --cond: "IBM Plex Sans Condensed", "IBM Plex Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page:    #0b0d10;
+    --surface: #15181d;
+    --sunken:  #1c2027;
+    --ink:     #f2f5f9;
+    --ink-2:   #b6bdc7;
+    --muted:   #838b96;
+    --grid:    #262b32;
+    --rule:    #2e343c;
+    --ring:    rgba(255,255,255,0.11);
+    --shadow:  0 1px 2px rgba(0,0,0,.5), 0 10px 28px -18px rgba(0,0,0,.9);
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+    --slab1: #184f95; --slab2: #256abf; --slab3: #2a78d6;
+    --slab4: #3987e5; --slab5: #6da7ec; --slab6: #9ec5f4;
+    --slab-ink: #0b0d10;
+    --tint-s1: rgba(57,135,229,.16);
+    --tint-neg: rgba(208,59,59,.18);
+  }
+}
+:root[data-theme="dark"] {
+  --page:    #0b0d10;
+  --surface: #15181d;
+  --sunken:  #1c2027;
+  --ink:     #f2f5f9;
+  --ink-2:   #b6bdc7;
+  --muted:   #838b96;
+  --grid:    #262b32;
+  --rule:    #2e343c;
+  --ring:    rgba(255,255,255,0.11);
+  --shadow:  0 1px 2px rgba(0,0,0,.5), 0 10px 28px -18px rgba(0,0,0,.9);
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+  --slab1: #184f95; --slab2: #256abf; --slab3: #2a78d6;
+  --slab4: #3987e5; --slab5: #6da7ec; --slab6: #9ec5f4;
+  --slab-ink: #0b0d10;
+  --tint-s1: rgba(57,135,229,.16);
+  --tint-neg: rgba(208,59,59,.18);
+}
+
+/* ------------------------------------------------------------------ base -- */
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 72px; }
+h1, h2, h3 { font-family: var(--cond); font-weight: 700; text-wrap: balance; margin: 0; letter-spacing: -.01em; }
+h1 { font-size: clamp(28px, 4.4vw, 42px); line-height: 1.06; }
+h2 { font-size: 21px; line-height: 1.2; }
+h3 { font-size: 15px; font-weight: 600; }
+p  { margin: 0; }
+a  { color: var(--s1); }
+:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; border-radius: 3px; }
+
+.eyebrow {
+  font-family: var(--cond); font-weight: 600; font-size: 11px;
+  letter-spacing: .13em; text-transform: uppercase; color: var(--muted);
+}
+.lede  { color: var(--ink-2); max-width: 66ch; }
+.small { font-size: 13px; color: var(--ink-2); }
+.tiny  { font-size: 12px; color: var(--muted); }
+.num   { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* ---------------------------------------------------------------- layout -- */
+.masthead {
+  display: flex; flex-wrap: wrap; gap: 20px 28px;
+  align-items: flex-end; justify-content: space-between;
+  padding-bottom: 20px; margin-bottom: 22px;
+  border-bottom: 1px solid var(--rule);
+}
+.masthead .who { display: flex; flex-direction: column; gap: 6px; }
+.picker { display: flex; flex-direction: column; gap: 6px; min-width: 260px; }
+select, input, textarea, button {
+  font-family: inherit; font-size: 14px; color: var(--ink);
+  background: var(--surface); border: 1px solid var(--rule);
+  border-radius: 7px; padding: 8px 10px;
+}
+select { cursor: pointer; }
+input[type="number"], input[type="date"] { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+textarea { font-family: var(--mono); font-size: 12.5px; line-height: 1.6; width: 100%; resize: vertical; }
+button {
+  cursor: pointer; font-weight: 500; background: var(--sunken);
+  transition: background .12s ease, border-color .12s ease;
+}
+button:hover { background: var(--surface); border-color: var(--muted); }
+button.primary { background: var(--s1); border-color: var(--s1); color: #fff; }
+button.primary:hover { filter: brightness(1.08); background: var(--s1); }
+
+section { margin-top: 34px; }
+.head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; }
+.head .why { color: var(--muted); font-size: 13px; }
+
+.card {
+  background: var(--surface); border: 1px solid var(--ring);
+  border-radius: 12px; box-shadow: var(--shadow); padding: 18px 20px;
+}
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 16px; }
+.grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.row { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field > span { font-size: 12px; color: var(--muted); }
+
+/* ------------------------------------------------------------ stat tiles -- */
+.tile { display: flex; flex-direction: column; gap: 3px; }
+.tile .label { font-size: 12px; color: var(--muted); }
+.tile .value {
+  font-family: var(--cond); font-weight: 700; font-size: 34px;
+  line-height: 1.1; letter-spacing: -.015em;
+}
+/* hero figures keep the display face and proportional digits; only columns go tabular */
+.tile .value.mono { font-variant-numeric: proportional-nums; }
+.tile .foot { font-size: 12.5px; color: var(--ink-2); }
+.tile.hero { border-left: 3px solid var(--s1); padding-left: 14px; }
+.tile.hero.warn { border-left-color: var(--critical); }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11.5px; font-weight: 500; padding: 2px 9px;
+  border-radius: 999px; border: 1px solid var(--ring); background: var(--sunken);
+  color: var(--ink-2); white-space: nowrap;
+}
+.pill.good     { color: var(--good);     border-color: color-mix(in srgb, var(--good) 45%, transparent); }
+.pill.warning  { color: var(--ink);      border-color: color-mix(in srgb, var(--warning) 60%, transparent); background: color-mix(in srgb, var(--warning) 14%, var(--surface)); }
+.pill.critical { color: var(--critical); border-color: color-mix(in srgb, var(--critical) 45%, transparent); }
+.pill .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+.banner {
+  display: flex; gap: 12px; align-items: flex-start;
+  border-radius: 10px; padding: 12px 14px; border: 1px solid var(--ring);
+  background: var(--sunken); font-size: 14px;
+}
+.banner .icon { font-family: var(--cond); font-weight: 700; font-size: 15px; line-height: 1.5; }
+.banner.warn     { border-color: color-mix(in srgb, var(--warning) 55%, transparent); background: color-mix(in srgb, var(--warning) 12%, var(--surface)); }
+.banner.critical { border-color: color-mix(in srgb, var(--critical) 45%, transparent); background: color-mix(in srgb, var(--critical) 9%, var(--surface)); }
+.banner.good     { border-color: color-mix(in srgb, var(--good) 40%, transparent); background: color-mix(in srgb, var(--good) 8%, var(--surface)); }
+
+/* ---------------------------------------------------------------- tables -- */
+.tablebox { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { padding: 6px 10px; text-align: right; white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+thead th {
+  font-family: var(--cond); font-weight: 600; font-size: 11px; color: var(--muted);
+  letter-spacing: .07em; text-transform: uppercase;
+  border-bottom: 1px solid var(--rule); position: sticky; top: 0; background: var(--surface);
+}
+tbody td { border-bottom: 1px solid var(--grid); font-variant-numeric: tabular-nums; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody td.n, tbody td.money { font-family: var(--mono); }
+tbody tr.total td { font-weight: 600; border-top: 1px solid var(--rule); border-bottom: 0; }
+td.neg { color: var(--critical); }
+.scroller { max-height: 380px; overflow: auto; border: 1px solid var(--grid); border-radius: 8px; }
+
+/* ----------------------------------------------------------------- chart -- */
+.chartbox { position: relative; }
+.chartbox svg { display: block; width: 100%; height: auto; }
+.tip {
+  position: absolute; pointer-events: none; opacity: 0; transform: translate(-50%, -100%);
+  background: var(--surface); border: 1px solid var(--ring); border-radius: 8px;
+  box-shadow: var(--shadow); padding: 8px 10px; font-size: 12px; min-width: 160px;
+  transition: opacity .1s ease; z-index: 5;
+}
+.tip .t-date { font-family: var(--cond); font-weight: 700; font-size: 13px; margin-bottom: 4px; }
+.tip dl { display: grid; grid-template-columns: auto auto; gap: 1px 12px; margin: 0; }
+.tip dt { color: var(--muted); }
+.tip dd { margin: 0; text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12.5px; color: var(--ink-2); }
+.legend .key { display: inline-flex; align-items: center; gap: 7px; }
+.legend .swatch { width: 14px; height: 3px; border-radius: 2px; background: var(--s1); }
+.legend .swatch.dot { width: 9px; height: 9px; border-radius: 50%; }
+
+/* ------------------------------------------------------------ slab ladder -- */
+.ladder { display: flex; flex-direction: column; gap: 3px; }
+.rung {
+  display: grid; grid-template-columns: 74px 1fr 62px auto; align-items: center; gap: 10px;
+  padding: 5px 8px; border-radius: 6px; font-size: 13px;
+}
+.rung .bar { height: 10px; border-radius: 3px; }
+.rung.here { background: var(--tint-s1); font-weight: 600; }
+.rung .rng { font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
+.rung .rate { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* ----------------------------------------------------------- stacked bar -- */
+.stack { display: flex; gap: 2px; height: 30px; border-radius: 5px; overflow: hidden; }
+.stack > i { display: block; height: 100%; }
+.breakdown { display: flex; flex-direction: column; gap: 10px; }
+
+.split { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.habit { border: 1px solid var(--ring); border-radius: 10px; padding: 14px 16px; background: var(--surface); }
+.habit.a { border-top: 3px solid var(--s1); }
+.habit.b { border-top: 3px solid var(--s2); }
+
+.footnote { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--rule); color: var(--ink-2); font-size: 13px; }
+.footnote ol { padding-left: 20px; margin: 8px 0 0; display: flex; flex-direction: column; gap: 4px; }
+details > summary { cursor: pointer; font-size: 13px; color: var(--ink-2); padding: 4px 0; }
+details[open] > summary { margin-bottom: 8px; }
+.stackrow { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<header class="masthead">
+  <div class="who">
+    <span class="eyebrow">Dhaka prepaid meter &middot; slab tariff</span>
+    <h1>Where the recharge actually goes</h1>
+    <p class="lede">The meter never shows the slab. This rebuilds the balance day by day at the
+      published rates, says when it runs out, and says what to put in today.</p>
+  </div>
+  <div class="picker">
+    <label class="field"><span>Household</span>
+      <select id="pick"></select>
+    </label>
+    <p class="tiny" id="pickmeta"></p>
+  </div>
+</header>
+
+<!-- the three numbers the family actually asks for, before any detail -->
+<section id="answers" style="margin-top:0">
+  <div class="card">
+    <div class="grid3" id="tiles"></div>
+    <div id="slabnote" style="margin-top:16px"></div>
+  </div>
+</section>
+
+<section id="household">
+  <div class="head">
+    <span class="eyebrow">1</span>
+    <h2>The household and its months</h2>
+    <span class="why">Daily readings and the recharge history they came with.</span>
+  </div>
+  <div class="card">
+    <div id="monthbadges" class="stackrow" style="margin-bottom:14px"></div>
+    <div class="tablebox"><table id="monthtable"></table></div>
+    <details style="margin-top:12px">
+      <summary>Recharge history &mdash; every top-up on record</summary>
+      <div class="tablebox scroller"><table id="rechargetable"></table></div>
+    </details>
+  </div>
+</section>
+
+<section id="ledger">
+  <div class="head">
+    <span class="eyebrow">2</span>
+    <h2>Balance, rebuilt day by day</h2>
+    <span class="why">Each day billed at the slab the month's running total has reached.</span>
+  </div>
+  <div class="card">
+    <div class="legend" style="margin-bottom:10px">
+      <span class="key"><i class="swatch" style="background:var(--s1)"></i> Meter balance</span>
+      <span class="key"><i class="swatch dot" style="background:var(--s2)"></i> Recharge</span>
+      <span class="key"><i class="swatch" style="background:var(--critical)"></i> Empty (0 tk)</span>
+      <span class="key tiny">Hover the chart for that day's figures.</span>
+    </div>
+    <div class="chartbox" id="balchart"></div>
+    <details style="margin-top:14px">
+      <summary>Day-by-day ledger &mdash; units, slab, energy, VAT, fixed charges, balance</summary>
+      <div class="tablebox scroller"><table id="daytable"></table></div>
+    </details>
+  </div>
+</section>
+
+<section id="questions">
+  <div class="head">
+    <span class="eyebrow">3</span>
+    <h2>The family's two questions</h2>
+    <span class="why">Both run on the rebuilt balance; every input is editable.</span>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <h3>When does this balance run out?</h3>
+      <p class="small" style="margin:6px 0 14px">No recharge in between, so no further demand
+        charge or meter rent &mdash; those are only taken when money goes in.</p>
+      <div class="row">
+        <label class="field" style="flex:1 1 130px"><span>Balance today (tk)</span>
+          <input type="number" id="q-bal" step="0.01"></label>
+        <label class="field" style="flex:1 1 110px"><span>Units per day</span>
+          <input type="number" id="q-daily" min="1" step="1"></label>
+        <label class="field" style="flex:1 1 130px"><span>Units used this month</span>
+          <input type="number" id="q-cum" min="0" step="1"></label>
+      </div>
+      <div id="runout" style="margin-top:16px"></div>
+    </div>
+
+    <div class="card">
+      <h3>What must go in today to reach a date?</h3>
+      <p class="small" style="margin:6px 0 14px">Broken into energy at the first-slab rate, the part
+        added by higher slabs, the fixed charges and VAT.</p>
+      <div class="row">
+        <label class="field" style="flex:1 1 160px"><span>Last until</span>
+          <input type="date" id="q-target"></label>
+        <label class="field" style="flex:1 1 200px"><span>Demand charge + meter rent</span>
+          <select id="q-fixed">
+            <option value="1">Not yet taken this month &mdash; add 82 tk</option>
+            <option value="0">Already taken this month &mdash; add nothing</option>
+          </select></label>
+      </div>
+      <div id="need" style="margin-top:16px"></div>
+    </div>
+  </div>
+</section>
+
+<section id="habits">
+  <div class="head">
+    <span class="eyebrow">4</span>
+    <h2>Two recharge habits, one set of readings</h2>
+    <span class="why">Identical consumption and the same calendar-month slab counter on both sides.</span>
+  </div>
+  <div class="card">
+    <div class="row" style="margin-bottom:16px">
+      <label class="field"><span>Low-balance: recharge when below (tk)</span>
+        <input type="number" id="h-thr" step="1"></label>
+      <label class="field"><span>Low-balance: amount (tk)</span>
+        <input type="number" id="h-low" step="1"></label>
+      <label class="field"><span>Monthly: amount on the 1st (tk)</span>
+        <input type="number" id="h-mon" step="1"></label>
+      <label class="field"><span>Both start from (tk)</span>
+        <input type="number" id="h-open" step="1"></label>
+    </div>
+    <div id="verdict" style="margin-bottom:16px"></div>
+    <div class="legend" style="margin-bottom:10px">
+      <span class="key"><i class="swatch" style="background:var(--s1)"></i> Low balance</span>
+      <span class="key"><i class="swatch" style="background:var(--s2)"></i> Monthly on the 1st</span>
+    </div>
+    <div class="chartbox" id="habitchart"></div>
+    <div class="split" id="habitcards" style="margin-top:16px"></div>
+    <div class="tablebox" style="margin-top:16px"><table id="habittable"></table></div>
+  </div>
+</section>
+
+<section id="slabwatch">
+  <div class="head">
+    <span class="eyebrow">Extra</span>
+    <h2>Where this month sits on the slab ladder</h2>
+    <span class="why">And what the next unit costs once the counter crosses.</span>
+  </div>
+  <div class="card grid2">
+    <div>
+      <div id="slabwarn" style="margin-bottom:14px"></div>
+      <div class="ladder" id="ladder"></div>
+    </div>
+    <div>
+      <h3>This month's units, priced by slab</h3>
+      <div class="breakdown" style="margin-top:10px" id="slabspend"></div>
+    </div>
+  </div>
+</section>
+
+<section id="bill">
+  <div class="head">
+    <span class="eyebrow">Extra</span>
+    <h2>One month's bill, itemised</h2>
+    <span class="why">Energy, demand charge, meter rent, VAT.</span>
+  </div>
+  <div class="card">
+    <label class="field" style="max-width:200px"><span>Month</span>
+      <select id="billmonth"></select></label>
+    <div id="billout" style="margin-top:16px"></div>
+  </div>
+</section>
+
+<section id="reconcile">
+  <div class="head">
+    <span class="eyebrow">Extra</span>
+    <h2>Check the rebuild against the real meter</h2>
+    <span class="why">Paste your own recharges, and any balances the meter actually showed.</span>
+  </div>
+  <div class="card">
+    <div class="grid2">
+      <label class="field"><span>Recharge history &mdash; one per line: date, amount</span>
+        <textarea id="r-rec" rows="8" spellcheck="false"></textarea></label>
+      <label class="field"><span>What the meter showed &mdash; one per line: date, balance</span>
+        <textarea id="r-obs" rows="8" spellcheck="false"
+          placeholder="2026-05-10, 812.50&#10;2026-05-24, 96.20"></textarea></label>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <label class="field" style="flex:0 1 160px"><span>Opening balance (tk)</span>
+        <input type="number" id="r-open" step="0.01"></label>
+      <button class="primary" id="r-run">Rebuild and compare</button>
+      <button id="r-reset">Reset to this household</button>
+      <button id="r-self">Fill readings from the rebuild (self-check)</button>
+    </div>
+    <div id="r-out" style="margin-top:16px"></div>
+  </div>
+</section>
+
+<footer class="footnote">
+  <h3>The tariff this tool uses, and nothing else</h3>
+  <div class="tablebox" style="margin-top:8px;max-width:560px"><table id="tarifftable"></table></div>
+  <h3 style="margin-top:18px">How the rules were read</h3>
+  <ol>
+    <li>The slab counter is the calendar month's running unit total. It resets on the 1st. A
+      recharge never resets it.</li>
+    <li>Slabs price unit positions, so unit 75 of a month costs 4.63 and unit 76 costs 5.26. A day
+      that crosses a boundary is split across the two rates.</li>
+    <li>The 42 tk demand charge and 40 tk meter rent are taken together, once, at the first recharge
+      of a calendar month. A month with no recharge in it carries neither.</li>
+    <li>VAT is 5% of the energy amount, as written. It is not charged on the demand charge or the
+      meter rent.</li>
+    <li>A recharge is credited at the start of its day; that day's units are then billed.</li>
+    <li>Cost means what the meter consumes &mdash; energy, VAT and the fixed charges that actually
+      fall due &mdash; not the amount deposited.</li>
+  </ol>
+</footer>
+</div>
+
+<script>
+"use strict";
+const HOUSEHOLDS = /*__DATA__*/;
+
+/* =======================================================================
+   Engine. All money is held in integer ticks of 0.0001 tk, so every figure
+   is exact: the slab rates have two decimals and VAT is energy/20, which
+   stays whole because every rate in ticks divides by 20.
+   ======================================================================= */
+const TK = 10000;
+const SLABS = [
+  { upto: 75,       rate: 46300  },   // units 1-75    @ 4.63
+  { upto: 200,      rate: 52600  },   // units 76-200  @ 5.26
+  { upto: 300,      rate: 56300  },   // units 201-300 @ 5.63
+  { upto: 400,      rate: 58300  },   // units 301-400 @ 5.83
+  { upto: 600,      rate: 93000  },   // units 401-600 @ 9.30
+  { upto: Infinity, rate: 107000 },   // units 601+    @ 10.70
+];
+const DEMAND = 42 * TK, RENT = 40 * TK, FIXED = DEMAND + RENT;
+const BASE_RATE = SLABS[0].rate;
+
+const slabIndex = cum => { const n = cum + 1; for (let i = 0; i < SLABS.length; i++) if (n <= SLABS[i].upto) return i; };
+const slabLo = i => (i === 0 ? 1 : SLABS[i - 1].upto + 1);
+const slabLabel = i => (SLABS[i].upto === Infinity ? slabLo(i) + "+" : slabLo(i) + "\u2013" + SLABS[i].upto);
+const vat = e => e / 20;
+
+/** Cost of `units` when `cumBefore` units are already on this month's counter. */
+function energy(cumBefore, units) {
+  let cost = 0, n = cumBefore, left = units;
+  const parts = [];
+  while (left > 0) {
+    const i = slabIndex(n), cap = SLABS[i].upto;
+    const take = cap === Infinity ? left : Math.min(left, cap - n);
+    cost += SLABS[i].rate * take;
+    parts.push({ slab: i, units: take, cost: SLABS[i].rate * take });
+    n += take; left -= take;
+  }
+  return { cost, parts };
+}
+
+/* --- dates as integer day numbers, UTC throughout --- */
+const DAY = 86400000;
+const dnum = iso => { const [y, m, d] = iso.split("-").map(Number); return Date.UTC(y, m - 1, d) / DAY; };
+const diso = n => new Date(n * DAY).toISOString().slice(0, 10);
+const dmon = n => new Date(n * DAY).toISOString().slice(0, 7);
+const dday = n => new Date(n * DAY).getUTCDate();
+const MONTHNAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const monLabel = ym => { const [y, m] = ym.split("-"); return MONTHNAMES[+m - 1] + " " + y; };
+const dateLabel = iso => { const n = dnum(iso); return dday(n) + " " + MONTHNAMES[+iso.slice(5, 7) - 1].slice(0, 3) + " " + iso.slice(0, 4); };
+
+/* --- money formatting: half-up, away from zero, matching the Python engine --- */
+function fmt(ticks, dp = 2) {
+  const s = ticks < 0 ? -1 : 1, a = Math.abs(ticks);
+  const v = Math.round(a / (dp === 2 ? 100 : 10000)) / (dp === 2 ? 100 : 1);
+  return (s < 0 ? "-" : "") + v.toLocaleString("en-US", { minimumFractionDigits: dp, maximumFractionDigits: dp });
+}
+const tkOf = taka => Math.round(taka * TK);
+
+/**
+ * Day-by-day rebuild.
+ * @param days      [{n, units}] consecutive
+ * @param recharges Map dayNumber -> ticks, credited at the start of the day
+ * @param opening   ticks
+ */
+function simulate(days, recharges, opening) {
+  let bal = opening, cum = 0, cur = null;
+  const taken = new Set(), ledger = [], months = new Map();
+  let tE = 0, tV = 0, tF = 0, tR = 0, tU = 0;
+
+  for (const { n, units } of days) {
+    const key = dmon(n);
+    if (key !== cur) { if (cur !== null) cum = 0; cur = key; }
+    if (!months.has(key)) months.set(key, { month: key, units: 0, energy: 0, vat: 0, fixed: 0, recharged: 0, count: 0, first: n, last: n, end: 0 });
+    const m = months.get(key);
+    m.last = n;
+
+    const rec = recharges.get(n) || 0;
+    let fixedToday = 0;
+    if (rec > 0) {
+      bal += rec; tR += rec; m.recharged += rec; m.count++;
+      if (!taken.has(key)) { taken.add(key); fixedToday = FIXED; bal -= FIXED; tF += FIXED; m.fixed += FIXED; }
+    }
+    const { cost: e, parts } = energy(cum, units);
+    const v = vat(e);
+    bal -= e + v;
+    cum += units; tE += e; tV += v; tU += units;
+    m.units += units; m.energy += e; m.vat += v; m.end = bal;
+
+    ledger.push({ n, date: diso(n), month: key, units, cumBefore: cum - units, cum,
+                  recharge: rec, fixed: fixedToday, energy: e, vat: v, balance: bal,
+                  slab: units ? slabIndex(cum - 1) : slabIndex(cum), parts });
+  }
+  return { ledger, months, end: bal, energy: tE, vat: tV, fixed: tF, recharged: tR,
+           units: tU, cost: tE + tV + tF, fixedMonths: taken.size };
+}
+
+/** Item 3a. Burn the balance forward with no further recharge. */
+function runout(fromN, balance, daily, cumMonth, horizon = 2000) {
+  if (balance <= 0) return { empty: true, date: null, days: 0, rows: [] };
+  let bal = balance, cum = cumMonth, month = dmon(fromN), n = fromN + 1;
+  const rows = [];
+  for (let i = 0; i < horizon; i++) {
+    if (dmon(n) !== month) { month = dmon(n); cum = 0; }
+    const e = energy(cum, daily).cost, v = vat(e);
+    bal -= e + v; cum += daily;
+    rows.push({ n, date: diso(n), balance: bal, cum });
+    if (bal <= 0) return { empty: false, date: diso(n), days: rows.length, rows };
+    n++;
+  }
+  return { empty: false, date: null, days: null, rows };
+}
+
+/** Item 3b. What has to go in today to cover every day up to and including `target`. */
+function needed(todayN, targetN, balance, daily, cumMonth, fixedDue) {
+  let cum = cumMonth, month = dmon(todayN), e = 0, units = 0;
+  const bySlab = new Map();
+  for (let n = todayN + 1; n <= targetN; n++) {
+    if (dmon(n) !== month) { month = dmon(n); cum = 0; }
+    const r = energy(cum, daily);
+    for (const p of r.parts) {
+      const row = bySlab.get(p.slab) || { slab: p.slab, units: 0, cost: 0 };
+      row.units += p.units; row.cost += p.cost; bySlab.set(p.slab, row);
+    }
+    e += r.cost; cum += daily; units += daily;
+  }
+  const base = BASE_RATE * units, premium = e - base;
+  const fixed = fixedDue ? FIXED : 0, v = vat(e);
+  const gross = e + v + fixed;
+  return { days: Math.max(0, targetN - todayN), units, energy: e, base, premium, fixed, vat: v,
+           gross, balance, amount: Math.max(0, gross - balance),
+           bySlab: [...bySlab.values()].sort((a, b) => a.slab - b.slab) };
+}
+
+/**
+ * Item 4. Identical consumption, identical calendar-month slab counter, two habits.
+ * low-balance : recharge `lowAmt` at the start of any day whose balance is below `thr`
+ * monthly     : recharge `monAmt` on the 1st of each month
+ */
+function habits(days, opening, thr, lowAmt, monAmt) {
+  let bal = opening, cum = 0, cur = null;
+  const taken = new Set(), aRec = new Map();
+  for (const { n, units } of days) {                 // decide habit A day by day
+    const key = dmon(n);
+    if (key !== cur) { if (cur !== null) cum = 0; cur = key; }
+    if (bal < thr) {
+      bal += lowAmt; aRec.set(n, lowAmt);
+      if (!taken.has(key)) { taken.add(key); bal -= FIXED; }
+    }
+    const e = energy(cum, units).cost;
+    bal -= e + vat(e); cum += units;
+  }
+  const bRec = new Map();
+  for (const { n } of days) if (dday(n) === 1) bRec.set(n, monAmt);
+
+  const low = simulate(days, aRec, opening), monthly = simulate(days, bRec, opening);
+  const diff = low.cost - monthly.cost;
+  return { low, monthly, aRec, bRec, diff,
+           cheaper: diff < 0 ? "low" : diff > 0 ? "monthly" : "equal",
+           saving: Math.abs(diff),
+           sameEnergy: low.energy === monthly.energy && low.vat === monthly.vat };
+}
+
+/* =======================================================================
+   Charts. Plain SVG, sized to the container, redrawn on resize.
+   ======================================================================= */
+const SVGNS = "http://www.w3.org/2000/svg";
+const el = (tag, attrs = {}, parent = null) => {
+  const e = document.createElementNS(SVGNS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+};
+const niceStep = span => {
+  const raw = span / 5, mag = Math.pow(10, Math.floor(Math.log10(raw))), r = raw / mag;
+  return (r >= 5 ? 5 : r >= 2 ? 2 : 1) * mag;
+};
+
+/**
+ * One or more balance lines over a shared day range, with recharge markers,
+ * month rules, a zero line and a hover crosshair.
+ */
+function balanceChart(box, series, opts = {}) {
+  const draw = () => {
+    box.querySelectorAll("svg,.tip").forEach(n => n.remove());
+    const W = Math.max(320, box.clientWidth), H = opts.height || 300;
+    const pad = { l: 58, r: 14, t: 14, b: 26 };
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: "img",
+                            "aria-label": opts.aria || "Meter balance over time" }, box);
+    const all = series.flatMap(s => s.points);
+    if (!all.length) return;
+    const n0 = Math.min(...all.map(p => p.n)), n1 = Math.max(...all.map(p => p.n));
+    let lo = Math.min(0, ...all.map(p => p.balance)), hi = Math.max(...all.map(p => p.balance));
+    const step = niceStep(Math.max(hi - lo, TK));
+    lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+    if (hi === lo) hi = lo + step;
+    const X = n => pad.l + (n - n0) / Math.max(1, n1 - n0) * (W - pad.l - pad.r);
+    const Y = v => H - pad.b - (v - lo) / (hi - lo) * (H - pad.t - pad.b);
+
+    for (let v = lo; v <= hi + 1; v += step) {                       // recessive grid
+      el("line", { x1: pad.l, x2: W - pad.r, y1: Y(v), y2: Y(v),
+                   stroke: "var(--grid)", "stroke-width": 1 }, svg);
+      el("text", { x: pad.l - 8, y: Y(v) + 4, "text-anchor": "end", fill: "var(--muted)",
+                   "font-size": 11, "font-family": "var(--mono)" }, svg)
+        .textContent = fmt(v, 0);
+    }
+    for (let n = n0; n <= n1; n++) {                                 // month starts
+      if (dday(n) !== 1 && n !== n0) continue;
+      if (n !== n0) el("line", { x1: X(n), x2: X(n), y1: pad.t, y2: H - pad.b,
+                                 stroke: "var(--grid)", "stroke-width": 1 }, svg);
+      el("text", { x: X(n) + 4, y: H - pad.b + 15, fill: "var(--muted)", "font-size": 11,
+                   "font-family": "var(--cond)" }, svg)
+        .textContent = MONTHNAMES[+dmon(n).slice(5) - 1].slice(0, 3);
+    }
+    /* zero is the line that matters on a prepaid meter: below it the supply is gone */
+    const zeroShown = lo < 0;
+    if (zeroShown) {
+      const defs = el("defs", {}, svg);
+      const clipAbove = el("clipPath", { id: "above" + box.id }, defs);
+      el("rect", { x: pad.l, y: pad.t, width: W - pad.l - pad.r, height: Math.max(0, Y(0) - pad.t) }, clipAbove);
+      const clipBelow = el("clipPath", { id: "below" + box.id }, defs);
+      el("rect", { x: pad.l, y: Y(0), width: W - pad.l - pad.r, height: Math.max(0, H - pad.b - Y(0)) }, clipBelow);
+    }
+
+    series.forEach(s => {
+      const pts = s.points;
+      if (s.fill) {
+        const d = "M" + X(pts[0].n) + "," + Y(0) + pts.map(p => "L" + X(p.n) + "," + Y(p.balance)).join("") +
+                  "L" + X(pts[pts.length - 1].n) + "," + Y(0) + "Z";
+        el("path", { d, fill: s.fill, stroke: "none",
+                     ...(zeroShown ? { "clip-path": `url(#above${box.id})` } : {}) }, svg);
+        // the same area below the line reads as arrears, not as credit
+        if (zeroShown) el("path", { d, fill: "var(--tint-neg)", stroke: "none",
+                                    "clip-path": `url(#below${box.id})` }, svg);
+      }
+      el("path", { d: "M" + pts.map(p => X(p.n) + "," + Y(p.balance)).join("L"),
+                   fill: "none", stroke: s.color, "stroke-width": 2,
+                   "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
+      (s.marks || []).forEach(m => {
+        el("line", { x1: X(m.n), x2: X(m.n), y1: Y(m.balance), y2: Y(m.balance) - 9,
+                     stroke: s.markColor || "var(--s2)", "stroke-width": 1.5 }, svg);
+        el("circle", { cx: X(m.n), cy: Y(m.balance) - 11, r: 4, fill: s.markColor || "var(--s2)",
+                       stroke: "var(--surface)", "stroke-width": 2 }, svg);
+      });
+      const last = pts[pts.length - 1];
+      el("circle", { cx: X(last.n), cy: Y(last.balance), r: 4.5, fill: s.color,
+                     stroke: "var(--surface)", "stroke-width": 2 }, svg);
+    });
+    if (zeroShown) {
+      el("line", { x1: pad.l, x2: W - pad.r, y1: Y(0), y2: Y(0),
+                   stroke: "var(--critical)", "stroke-width": 1.5 }, svg);
+      el("text", { x: W - pad.r - 2, y: Y(0) - 6, "text-anchor": "end", fill: "var(--critical)",
+                   "font-size": 11, "font-family": "var(--cond)" }, svg).textContent = "empty";
+    }
+
+    /* hover layer */
+    const tip = document.createElement("div");
+    tip.className = "tip"; box.appendChild(tip);
+    const cross = el("line", { y1: pad.t, y2: H - pad.b, stroke: "var(--muted)",
+                               "stroke-width": 1, "stroke-dasharray": "3 3", opacity: 0 }, svg);
+    const dots = series.map(s => el("circle", { r: 4.5, fill: s.color, stroke: "var(--surface)",
+                                                "stroke-width": 2, opacity: 0 }, svg));
+    const hit = el("rect", { x: pad.l, y: pad.t, width: W - pad.l - pad.r, height: H - pad.t - pad.b,
+                             fill: "transparent" }, svg);
+    const move = ev => {
+      const r = box.getBoundingClientRect();
+      const px = (ev.clientX - r.left) * (W / r.width);
+      const n = Math.round(n0 + (px - pad.l) / (W - pad.l - pad.r) * (n1 - n0));
+      const nc = Math.min(n1, Math.max(n0, n));
+      cross.setAttribute("x1", X(nc)); cross.setAttribute("x2", X(nc));
+      cross.setAttribute("opacity", 1);
+      let top = Infinity;
+      const rows = series.map((s, i) => {
+        const p = s.byDay.get(nc);
+        if (!p) { dots[i].setAttribute("opacity", 0); return null; }
+        dots[i].setAttribute("cx", X(p.n)); dots[i].setAttribute("cy", Y(p.balance));
+        dots[i].setAttribute("opacity", 1);
+        top = Math.min(top, Y(p.balance));
+        return { s, p };
+      }).filter(Boolean);
+      if (!rows.length) return;
+      tip.innerHTML = opts.tip(rows, nc);
+      tip.style.opacity = 1;
+      tip.style.left = Math.min(box.clientWidth - 90, Math.max(90, X(nc) * (box.clientWidth / W))) + "px";
+      tip.style.top = Math.max(46, top * (box.clientHeight / H) - 12) + "px";
+    };
+    hit.addEventListener("pointermove", move);
+    hit.addEventListener("pointerleave", () => {
+      tip.style.opacity = 0; cross.setAttribute("opacity", 0);
+      dots.forEach(d => d.setAttribute("opacity", 0));
+    });
+  };
+  draw();
+  if (box._ro) box._ro.disconnect();
+  box._ro = new ResizeObserver(() => draw());
+  box._ro.observe(box);
+}
+
+/* =======================================================================
+   Rendering
+   ======================================================================= */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+const slabVar = i => `var(--slab${i + 1})`;
+let H, S, TODAY_N;                                 // current household, its rebuild, its "today"
+
+function prep(h) {
+  const start = dnum(h.start);
+  const days = h.units.map((u, i) => ({ n: start + i, units: u }));
+  const rec = new Map();
+  for (const [d, a] of h.recharges) {
+    const n = dnum(d);
+    rec.set(n, (rec.get(n) || 0) + tkOf(a));
+  }
+  return { days, rec };
+}
+
+function buildPicker() {
+  $("pick").innerHTML = HOUSEHOLDS.map((h, i) =>
+    `<option value="${i}">${esc(h.name)}</option>`).join("");
+}
+
+function tariffTable() {
+  $("tarifftable").innerHTML =
+    "<thead><tr><th>Units in the month</th><th>Rate</th><th>What it adds over 4.63</th></tr></thead><tbody>" +
+    SLABS.map((s, i) =>
+      `<tr><td><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${slabVar(i)};margin-right:8px"></i>${slabLabel(i)}</td>
+        <td class="money">${fmt(s.rate)}</td>
+        <td class="money">${i ? "+" + fmt(s.rate - BASE_RATE) : "\u2014"}</td></tr>`).join("") +
+    `<tr class="total"><td>Demand charge + meter rent</td><td class="money">${fmt(FIXED)}</td><td class="tiny">once a month, at the first recharge</td></tr>
+     <tr><td>VAT</td><td class="money">5%</td><td class="tiny">of the energy amount</td></tr></tbody>`;
+}
+
+/* -------------------------------------------------------- item 1 render -- */
+function renderHousehold() {
+  const ms = [...S.months.values()];
+  const light = ms.reduce((a, b) => (b.units < a.units ? b : a));
+  const heavy = ms.reduce((a, b) => (b.units > a.units ? b : a));
+  const lateBig = ms.filter(m => {
+    const inMonth = S.ledger.filter(x => x.month === m.month && x.recharge > 0);
+    const late = inMonth.filter(x => dday(x.n) >= new Date(Date.UTC(+m.month.slice(0,4), +m.month.slice(5), 0)).getUTCDate() - 6);
+    const lateSum = late.reduce((a, x) => a + x.recharge, 0);
+    return lateSum >= 1500 * TK && lateSum >= m.recharged * 0.5;
+  });
+
+  $("monthbadges").innerHTML =
+    `<span class="pill">${ms.length} months of daily readings</span>` +
+    `<span class="pill"><i class="dot" style="background:var(--slab1)"></i>Lightest &mdash; ${monLabel(light.month)}, ${light.units} units</span>` +
+    `<span class="pill"><i class="dot" style="background:var(--slab5)"></i>Heaviest &mdash; ${monLabel(heavy.month)}, ${heavy.units} units</span>` +
+    (lateBig.length
+      ? `<span class="pill warning"><i class="dot" style="background:var(--s2)"></i>Big recharge in the last week &mdash; ${lateBig.map(m => monLabel(m.month)).join(", ")}</span>`
+      : "");
+
+  const maxU = Math.max(...ms.map(m => m.units));
+  $("monthtable").innerHTML =
+    `<thead><tr><th>Month</th><th>Units</th><th style="width:180px">Daily readings</th><th>Top slab reached</th>
+      <th>Energy</th><th>VAT</th><th>Fixed</th><th>Bill</th><th>Recharged</th><th>Balance at month end</th></tr></thead><tbody>` +
+    ms.map(m => {
+      const rows = S.ledger.filter(x => x.month === m.month);
+      const mx = Math.max(...rows.map(r => r.units), 1);
+      const spark = rows.map((r, i) =>
+        `<rect x="${i * (170 / rows.length)}" y="${20 - (r.units / mx) * 18}" width="${Math.max(1.2, 170 / rows.length - 1)}"
+           height="${(r.units / mx) * 18}" fill="${slabVar(r.slab)}"></rect>`).join("");
+      const top = Math.max(...rows.map(r => r.slab));
+      return `<tr>
+        <td>${monLabel(m.month)}</td>
+        <td class="n">${m.units}</td>
+        <td><svg viewBox="0 0 170 20" width="170" height="20" role="img" aria-label="daily units, ${m.units} in the month">${spark}</svg></td>
+        <td><span class="pill" style="border-color:${slabVar(top)}"><i class="dot" style="background:${slabVar(top)}"></i>${slabLabel(top)} @ ${fmt(SLABS[top].rate)}</span></td>
+        <td class="money">${fmt(m.energy)}</td>
+        <td class="money">${fmt(m.vat)}</td>
+        <td class="money">${fmt(m.fixed)}</td>
+        <td class="money">${fmt(m.energy + m.vat + m.fixed)}</td>
+        <td class="money">${fmt(m.recharged)}${m.count ? ` <span class="tiny">&times;${m.count}</span>` : ""}</td>
+        <td class="money ${m.end < 0 ? "neg" : ""}">${fmt(m.end)}</td></tr>`;
+    }).join("") +
+    `<tr class="total"><td>Total</td><td class="n">${S.units}</td><td></td><td></td>
+      <td class="money">${fmt(S.energy)}</td><td class="money">${fmt(S.vat)}</td>
+      <td class="money">${fmt(S.fixed)}</td><td class="money">${fmt(S.cost)}</td>
+      <td class="money">${fmt(S.recharged)}</td><td class="money ${S.end < 0 ? "neg" : ""}">${fmt(S.end)}</td></tr></tbody>`;
+  void maxU;
+
+  const recs = S.ledger.filter(x => x.recharge > 0);
+  $("rechargetable").innerHTML =
+    `<thead><tr><th>Date</th><th>Amount</th><th>Demand + rent taken</th><th>Balance after</th><th>Units used in the month so far</th></tr></thead><tbody>` +
+    recs.map(x => `<tr><td>${dateLabel(x.date)}</td><td class="money">${fmt(x.recharge)}</td>
+      <td class="money">${x.fixed ? fmt(x.fixed) : "\u2014"}</td>
+      <td class="money ${x.balance < 0 ? "neg" : ""}">${fmt(x.balance)}</td>
+      <td class="n">${x.cumBefore}</td></tr>`).join("") + "</tbody>";
+}
+
+/* -------------------------------------------------------- item 2 render -- */
+function renderLedger() {
+  const pts = S.ledger.map(x => ({ n: x.n, balance: x.balance }));
+  const byDay = new Map(S.ledger.map(x => [x.n, x]));
+  balanceChart($("balchart"), [{
+    color: "var(--s1)", fill: "var(--tint-s1)", points: pts, byDay,
+    marks: S.ledger.filter(x => x.recharge > 0), markColor: "var(--s2)",
+  }], {
+    height: 320,
+    aria: "Meter balance rebuilt day by day, with every recharge marked",
+    tip: rows => {
+      const x = rows[0].p;
+      return `<div class="t-date">${dateLabel(x.date)}</div><dl>
+        <dt>Balance</dt><dd>${fmt(x.balance)}</dd>
+        <dt>Units</dt><dd>${x.units}</dd>
+        <dt>Month to date</dt><dd>${x.cum}</dd>
+        <dt>Slab</dt><dd>${slabLabel(x.slab)} @ ${fmt(SLABS[x.slab].rate)}</dd>
+        <dt>Energy</dt><dd>${fmt(x.energy)}</dd>
+        <dt>VAT</dt><dd>${fmt(x.vat)}</dd>
+        ${x.recharge ? `<dt>Recharge</dt><dd>+${fmt(x.recharge)}</dd>` : ""}
+        ${x.fixed ? `<dt>Demand + rent</dt><dd>-${fmt(x.fixed)}</dd>` : ""}</dl>`;
+    },
+  });
+
+  $("daytable").innerHTML =
+    `<thead><tr><th>Date</th><th>Units</th><th>Month to date</th><th>Slab</th><th>Rate</th>
+      <th>Energy</th><th>VAT</th><th>Recharge</th><th>Demand + rent</th><th>Balance</th></tr></thead><tbody>` +
+    S.ledger.map(x => `<tr>
+      <td>${x.date}</td><td class="n">${x.units}</td><td class="n">${x.cum}</td>
+      <td><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${slabVar(x.slab)};margin-right:6px"></i>${slabLabel(x.slab)}</td>
+      <td class="money">${fmt(SLABS[x.slab].rate)}</td>
+      <td class="money">${fmt(x.energy)}</td><td class="money">${fmt(x.vat)}</td>
+      <td class="money">${x.recharge ? "+" + fmt(x.recharge) : "\u2014"}</td>
+      <td class="money">${x.fixed ? "-" + fmt(x.fixed) : "\u2014"}</td>
+      <td class="money ${x.balance < 0 ? "neg" : ""}">${fmt(x.balance)}</td></tr>`).join("") + "</tbody>";
+}
+
+/* -------------------------------------------------------- item 3 render -- */
+function renderRunout() {
+  const bal = tkOf(+$("q-bal").value || 0), daily = Math.max(1, +$("q-daily").value || 1);
+  const cum = Math.max(0, +$("q-cum").value || 0);
+  const r = runout(TODAY_N, bal, daily, cum);
+  const box = $("runout");
+  if (r.empty) {
+    box.innerHTML = `<div class="banner critical"><span class="icon">!</span>
+      <div><strong>The meter is already empty.</strong> At ${daily} units a day it costs about
+      ${fmt(energy(cum, daily).cost * 21 / 20)} tk to get through a day at this slab.</div></div>`;
+    return;
+  }
+  if (!r.date) { box.innerHTML = `<div class="banner good"><span class="icon">&#10003;</span>
+    <div>This balance lasts beyond the projection horizon.</div></div>`; return; }
+  const soon = r.days <= 7;
+  const perDay = Math.round((bal) / r.days);
+  box.innerHTML = `
+    <div class="tile hero ${soon ? "warn" : ""}">
+      <span class="label">Runs out on</span>
+      <span class="value">${dateLabel(r.date)}</span>
+      <span class="foot">${r.days} more day${r.days === 1 ? "" : "s"} from ${dateLabel(diso(TODAY_N))}
+        &mdash; last full day ${dateLabel(diso(dnum(r.date) - 1))}.</span>
+    </div>
+    <div class="grid3" style="margin-top:14px">
+      <div class="tile"><span class="label">Burn rate now</span>
+        <span class="value mono">${fmt(perDay)}</span><span class="foot">taka a day at ${daily} units</span></div>
+      <div class="tile"><span class="label">Slab on the last day</span>
+        <span class="value mono">${fmt(SLABS[slabIndex(r.rows[r.rows.length - 1].cum - 1)].rate)}</span>
+        <span class="foot">per unit, ${slabLabel(slabIndex(r.rows[r.rows.length - 1].cum - 1))} band</span></div>
+      <div class="tile"><span class="label">Units before it dies</span>
+        <span class="value mono">${r.days * daily}</span><span class="foot">at ${daily} a day</span></div>
+    </div>`;
+}
+
+function renderNeed() {
+  const bal = tkOf(+$("q-bal").value || 0), daily = Math.max(1, +$("q-daily").value || 1);
+  const cum = Math.max(0, +$("q-cum").value || 0);
+  const targetN = dnum($("q-target").value || diso(TODAY_N + 30));
+  const fixedDue = $("q-fixed").value === "1";
+  const box = $("need");
+  if (targetN <= TODAY_N) {
+    box.innerHTML = `<div class="banner warn"><span class="icon">!</span>
+      <div>Pick a date after ${dateLabel(diso(TODAY_N))}.</div></div>`;
+    return;
+  }
+  const r = needed(TODAY_N, targetN, bal, daily, cum, fixedDue);
+  const seg = [
+    { k: "Energy at the 4.63 rate", v: r.base, c: "var(--s1)" },
+    { k: "Added by higher slabs", v: r.premium, c: "var(--s2)" },
+    { k: "Demand charge + meter rent", v: r.fixed, c: "var(--s3)" },
+    { k: "VAT, 5% of energy", v: r.vat, c: "var(--s4)" },
+  ];
+  box.innerHTML = `
+    <div class="tile hero">
+      <span class="label">Recharge today</span>
+      <span class="value mono">${fmt(r.amount)} <span style="font-size:16px;font-family:var(--sans);font-weight:500">tk</span></span>
+      <span class="foot">covers ${r.days} days to ${dateLabel(diso(targetN))} &mdash;
+        ${r.units} units at ${daily} a day${r.balance > 0 ? `, after the ${fmt(r.balance)} tk already on the meter` : ""}.</span>
+    </div>
+    ${r.amount === 0 ? `<div class="banner good" style="margin-top:12px"><span class="icon">&#10003;</span>
+      <div>The balance already covers it. Nothing needs to go in today.</div></div>` : ""}
+    <div class="breakdown" style="margin-top:16px">
+      <div class="stack" role="img" aria-label="what the recharge is made of">
+        ${seg.filter(s => s.v > 0).map(s => `<i style="flex:${s.v};background:${s.c}"></i>`).join("")}
+      </div>
+      <table><tbody>
+        ${seg.map(s => `<tr><td><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${s.c};margin-right:8px"></i>${s.k}</td>
+          <td class="money">${fmt(s.v)}</td>
+          <td class="tiny">${r.gross ? Math.round(s.v / r.gross * 100) : 0}%</td></tr>`).join("")}
+        <tr class="total"><td>Cost of those ${r.days} days</td><td class="money">${fmt(r.gross)}</td><td></td></tr>
+        <tr><td>${r.balance < 0 ? "Arrears to clear first" : "Balance already on the meter"}</td>
+          <td class="money">${r.balance
+            ? (r.balance < 0 ? "+" + fmt(-r.balance) : "-" + fmt(r.balance))
+            : "\u2014"}</td><td></td></tr>
+        <tr class="total"><td>Put in today</td><td class="money">${fmt(r.amount)}</td><td></td></tr>
+      </tbody></table>
+      <p class="tiny">${r.premium > 0
+        ? `${fmt(r.premium)} tk of this &mdash; ${Math.round(r.premium / r.gross * 100)}% &mdash; exists only because the counter climbs past 75 units.`
+        : "Every unit in this window stays in the first slab."}
+        ${dmon(targetN) !== dmon(TODAY_N)
+          ? ` This window runs into ${monLabel(dmon(targetN))}, where the counter starts again at unit 1
+              &mdash; that is why the later days are cheaper. It is one recharge today, so no later
+              month's demand charge or meter rent is in this figure.`
+          : ""}</p>
+    </div>`;
+}
+
+/* -------------------------------------------------------- item 4 render -- */
+function renderHabits() {
+  const c = H.comparison;
+  const { days } = prep(H);
+  const months = new Set(c.months);
+  const cdays = c.source === "readings" || c.dailyUnits == null
+    ? days.filter(d => months.has(dmon(d.n)))
+    : days.filter(d => months.has(dmon(d.n))).map(d => ({ n: d.n, units: c.dailyUnits }));
+  const opening = tkOf(+$("h-open").value || 0);
+  const r = habits(cdays, opening, tkOf(+$("h-thr").value || 0),
+                   tkOf(+$("h-low").value || 0), tkOf(+$("h-mon").value || 0));
+
+  const label = { low: "Recharging when the balance runs low", monthly: "Recharging on the 1st of each month" };
+  /* equal cost does not mean equal outcome: one habit can still under-fund the meter */
+  const short = [["Low balance", r.low], ["Monthly on the 1st", r.monthly]].filter(x => x[1].end < 0);
+  const deposit = short.length
+    ? ` <span style="display:block;margin-top:6px">Same cost, different outcome:
+        ${short.map(x => `${x[0]} deposits ${fmt(x[1].recharged)} tk and ends
+        ${fmt(-x[1].end)} tk in arrears`).join("; ")} &mdash; the meter would have cut off.
+        Cost is what the meter consumes, not what goes in.</span>`
+    : "";
+  $("verdict").innerHTML = r.cheaper === "equal"
+    ? `<div class="banner"><span class="icon">=</span><div>
+        <strong>Both habits cost exactly the same: ${fmt(r.low.cost)} tk.</strong>
+        Same units, same calendar-month slabs, and the fixed charges fall due in
+        ${r.low.fixedMonths} month${r.low.fixedMonths === 1 ? "" : "s"} either way.
+        Recharge timing cannot buy a cheaper rate &mdash; the slab counter follows the calendar,
+        not the recharge.${deposit}</div></div>`
+    : `<div class="banner good"><span class="icon">&#9662;</span><div>
+        <strong>${label[r.cheaper]} costs ${fmt(r.saving)} tk less</strong> across these three months.
+        Energy and VAT are identical on both sides; the whole difference is that one habit triggers the
+        82 tk demand charge and meter rent in ${r.low.fixedMonths} month${r.low.fixedMonths === 1 ? "" : "s"}
+        and the other in ${r.monthly.fixedMonths}.${deposit}</div></div>`;
+
+  const mk = sim => ({
+    color: "", points: sim.ledger.map(x => ({ n: x.n, balance: x.balance })),
+    byDay: new Map(sim.ledger.map(x => [x.n, x])),
+    marks: sim.ledger.filter(x => x.recharge > 0),
+  });
+  const a = mk(r.low), b = mk(r.monthly);
+  a.color = "var(--s1)"; a.markColor = "var(--s1)";
+  b.color = "var(--s2)"; b.markColor = "var(--s2)";
+  balanceChart($("habitchart"), [a, b], {
+    height: 260,
+    aria: "Balance under the two recharge habits over the three compared months",
+    tip: rows => {
+      const x = rows[0].p;
+      return `<div class="t-date">${dateLabel(x.date)}</div><dl>
+        <dt>Units</dt><dd>${x.units}</dd><dt>Month to date</dt><dd>${x.cum}</dd>
+        <dt>Slab</dt><dd>${slabLabel(x.slab)}</dd>
+        <dt style="color:var(--s1)">Low balance</dt><dd>${fmt(rows[0].p.balance)}</dd>
+        ${rows[1] ? `<dt style="color:var(--s2)">Monthly</dt><dd>${fmt(rows[1].p.balance)}</dd>` : ""}</dl>`;
+    },
+  });
+
+  const card = (cls, title, sub, sim, rec, best) => `
+    <div class="habit ${cls}">
+      <div class="stackrow" style="justify-content:space-between">
+        <h3>${title}</h3>${best ? `<span class="pill good"><i class="dot"></i>cheaper</span>` : ""}
+      </div>
+      <p class="tiny" style="margin-top:2px">${sub}</p>
+      <div class="tile" style="margin-top:10px"><span class="label">Cost to the meter</span>
+        <span class="value mono">${fmt(sim.cost)}</span>
+        <span class="foot">energy ${fmt(sim.energy)} + VAT ${fmt(sim.vat)} + fixed ${fmt(sim.fixed)}</span></div>
+      <table style="margin-top:10px"><tbody>
+        <tr><td>Recharges made</td><td class="n">${rec.size}</td></tr>
+        <tr><td>Months paying demand + rent</td><td class="n">${sim.fixedMonths} of ${c.months.length}</td></tr>
+        <tr><td>Total deposited</td><td class="money">${fmt(sim.recharged)}</td></tr>
+        <tr><td>Left on the meter at the end</td><td class="money ${sim.end < 0 ? "neg" : ""}">${fmt(sim.end)}</td></tr>
+      </tbody></table></div>`;
+  $("habitcards").innerHTML =
+    card("a", "Recharge when low", `${fmt(tkOf(+$("h-low").value || 0))} tk whenever the balance starts a day below ${fmt(tkOf(+$("h-thr").value || 0))} tk`,
+         r.low, r.aRec, r.cheaper === "low") +
+    card("b", "Recharge on the 1st", `${fmt(tkOf(+$("h-mon").value || 0))} tk on the 1st of each month`,
+         r.monthly, r.bRec, r.cheaper === "monthly");
+
+  $("habittable").innerHTML =
+    `<thead><tr><th>Same three months</th><th>Units</th><th>Energy</th><th>VAT</th>
+      <th>Demand + rent</th><th>Cost to the meter</th><th>Deposited</th></tr></thead><tbody>
+     <tr><td><i style="display:inline-block;width:10px;height:3px;background:var(--s1);vertical-align:middle;margin-right:8px"></i>Low balance</td>
+       <td class="n">${r.low.units}</td><td class="money">${fmt(r.low.energy)}</td><td class="money">${fmt(r.low.vat)}</td>
+       <td class="money">${fmt(r.low.fixed)}</td><td class="money">${fmt(r.low.cost)}</td><td class="money">${fmt(r.low.recharged)}</td></tr>
+     <tr><td><i style="display:inline-block;width:10px;height:3px;background:var(--s2);vertical-align:middle;margin-right:8px"></i>Monthly on the 1st</td>
+       <td class="n">${r.monthly.units}</td><td class="money">${fmt(r.monthly.energy)}</td><td class="money">${fmt(r.monthly.vat)}</td>
+       <td class="money">${fmt(r.monthly.fixed)}</td><td class="money">${fmt(r.monthly.cost)}</td><td class="money">${fmt(r.monthly.recharged)}</td></tr>
+     <tr class="total"><td>Difference</td><td class="n">${r.low.units - r.monthly.units}</td>
+       <td class="money">${fmt(r.low.energy - r.monthly.energy)}</td><td class="money">${fmt(r.low.vat - r.monthly.vat)}</td>
+       <td class="money">${fmt(r.low.fixed - r.monthly.fixed)}</td><td class="money">${fmt(r.diff)}</td>
+       <td class="money">${fmt(r.low.recharged - r.monthly.recharged)}</td></tr></tbody>`;
+}
+
+/* ------------------------------------------------ bonus: slab proximity -- */
+function renderSlabs() {
+  const cum = Math.max(0, +$("q-cum").value || 0);
+  const daily = Math.max(1, +$("q-daily").value || 1);
+  const i = slabIndex(cum);
+  const cap = SLABS[i].upto;
+  const toNext = cap === Infinity ? null : cap - cum;
+  const nextRate = cap === Infinity ? null : SLABS[i + 1].rate;
+  const daysToNext = toNext == null ? null : Math.ceil(toNext / daily);
+
+  $("slabwarn").innerHTML = toNext == null
+    ? `<div class="banner"><span class="icon">&#9650;</span><div>This month is already in the top band.
+        Every further unit costs ${fmt(SLABS[i].rate)} tk &mdash;
+        ${((SLABS[i].rate / BASE_RATE - 1) * 100).toFixed(0)}% above the first-slab rate.</div></div>`
+    : toNext <= daily * 4
+      ? `<div class="banner warn"><span class="icon">!</span><div>
+          <strong>${toNext} unit${toNext === 1 ? "" : "s"} left before the next slab</strong> &mdash;
+          about ${daysToNext} day${daysToNext === 1 ? "" : "s"} at ${daily} units a day.
+          After that each unit jumps from ${fmt(SLABS[i].rate)} to ${fmt(nextRate)} tk,
+          ${fmt(nextRate - SLABS[i].rate)} tk more, and it stays there until the 1st.</div></div>`
+      : `<div class="banner"><span class="icon">&#9679;</span><div>
+          ${toNext} units left in the ${slabLabel(i)} band &mdash; roughly ${daysToNext} days at
+          ${daily} a day. The next unit after that costs ${fmt(nextRate)} tk instead of ${fmt(SLABS[i].rate)}.</div></div>`;
+
+  /* each rung is one slab's own capacity; the fill is how much of it this month has eaten */
+  $("ladder").innerHTML = SLABS.map((s, k) => {
+    const lo = slabLo(k);
+    const open = s.upto === Infinity;
+    const size = open ? Math.max(100, cum - lo + 1) : s.upto - lo + 1;
+    const used = Math.max(0, Math.min(cum, open ? Infinity : s.upto) - lo + 1);
+    return `<div class="rung ${k === i ? "here" : ""}">
+      <span class="rng">${slabLabel(k)}</span>
+      <span style="display:block;background:var(--grid);border-radius:3px">
+        <i class="bar" style="display:block;width:${Math.min(100, used / size * 100)}%;background:${slabVar(k)}"></i></span>
+      <span class="rng" style="text-align:right">${used}${open ? "" : "/" + size}</span>
+      <span class="rate">${fmt(s.rate)}${k === i ? " \u2190 now" : ""}</span></div>`;
+  }).join("");
+
+  const parts = energy(0, cum).parts;
+  const total = parts.reduce((a, p) => a + p.cost, 0);
+  $("slabspend").innerHTML = cum === 0
+    ? `<p class="small">No units on this month's counter yet.</p>`
+    : `<div class="stack" role="img" aria-label="this month's units priced by slab">
+        ${parts.map(p => `<i style="flex:${p.cost};background:${slabVar(p.slab)}"></i>`).join("")}</div>
+      <table><tbody>${parts.map(p => `<tr>
+        <td><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${slabVar(p.slab)};margin-right:8px"></i>${slabLabel(p.slab)} @ ${fmt(SLABS[p.slab].rate)}</td>
+        <td class="n">${p.units} units</td><td class="money">${fmt(p.cost)}</td></tr>`).join("")}
+        <tr class="total"><td>Energy so far this month</td><td class="n">${cum} units</td><td class="money">${fmt(total)}</td></tr>
+        <tr><td class="tiny">Same units at the 4.63 rate throughout</td><td></td><td class="money">${fmt(BASE_RATE * cum)}</td></tr>
+        <tr class="total"><td>Cost of climbing the slabs</td><td></td><td class="money">${fmt(total - BASE_RATE * cum)}</td></tr>
+      </tbody></table>`;
+}
+
+/* ------------------------------------------------- bonus: monthly bill --- */
+function renderBill() {
+  const key = $("billmonth").value;
+  const m = S.months.get(key);
+  if (!m) return;
+  const seg = [
+    { k: "Energy", v: m.energy, c: "var(--s1)", note: `${m.units} units` },
+    { k: "Demand charge", v: m.fixed ? DEMAND : 0, c: "var(--s2)", note: m.fixed ? "taken at the first recharge" : "no recharge this month" },
+    { k: "Meter rent", v: m.fixed ? RENT : 0, c: "var(--s3)", note: m.fixed ? "taken at the first recharge" : "no recharge this month" },
+    { k: "VAT", v: m.vat, c: "var(--s4)", note: "5% of energy" },
+  ];
+  const total = seg.reduce((a, s) => a + s.v, 0);
+  const parts = energy(0, m.units).parts;
+  $("billout").innerHTML = `
+    <div class="grid2">
+      <div class="breakdown">
+        <div class="tile"><span class="label">${monLabel(key)} &mdash; what the meter took</span>
+          <span class="value mono">${fmt(total)}</span>
+          <span class="foot">${m.units} units &middot; ${m.count} recharge${m.count === 1 ? "" : "s"} totalling ${fmt(m.recharged)} tk</span></div>
+        <div class="stack" role="img" aria-label="the month's bill by component">
+          ${seg.filter(s => s.v > 0).map(s => `<i style="flex:${s.v};background:${s.c}"></i>`).join("")}</div>
+        <table><tbody>
+          ${seg.map(s => `<tr><td><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${s.c};margin-right:8px"></i>${s.k}</td>
+            <td class="money">${fmt(s.v)}</td><td class="tiny">${s.note}</td></tr>`).join("")}
+          <tr class="total"><td>Total for the month</td><td class="money">${fmt(total)}</td><td></td></tr>
+          <tr><td>Average per unit</td><td class="money">${fmt(Math.round(total / Math.max(1, m.units)))}</td>
+            <td class="tiny">against a 4.63 first-slab rate</td></tr>
+        </tbody></table>
+      </div>
+      <div class="breakdown">
+        <h3>The energy half, by slab</h3>
+        <div class="stack" role="img" aria-label="energy by slab">
+          ${parts.map(p => `<i style="flex:${p.cost};background:${slabVar(p.slab)}"></i>`).join("")}</div>
+        <table><tbody>${parts.map(p => `<tr>
+          <td><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${slabVar(p.slab)};margin-right:8px"></i>${slabLabel(p.slab)} @ ${fmt(SLABS[p.slab].rate)}</td>
+          <td class="n">${p.units}</td><td class="money">${fmt(p.cost)}</td></tr>`).join("")}
+          <tr class="total"><td>Energy</td><td class="n">${m.units}</td><td class="money">${fmt(m.energy)}</td></tr>
+        </tbody></table>
+        <p class="tiny">At the first-slab rate all ${m.units} units would have cost ${fmt(BASE_RATE * m.units)} tk.
+          Climbing the slabs added ${fmt(m.energy - BASE_RATE * m.units)} tk.</p>
+      </div>
+    </div>`;
+}
+
+/* --------------------------------------- bonus: reconcile with the meter -- */
+function parsePairs(text) {
+  const out = [], bad = [];
+  text.split(/\n+/).forEach(line => {
+    const t = line.trim();
+    if (!t) return;
+    const m = t.match(/^(\d{4}-\d{2}-\d{2})\s*[,;\t ]\s*(-?[\d,]+(?:\.\d+)?)/);
+    if (!m) { bad.push(t); return; }
+    out.push([m[1], parseFloat(m[2].replace(/,/g, ""))]);
+  });
+  return { out, bad };
+}
+
+function resetReconcile() {
+  $("r-rec").value = H.recharges.map(([d, a]) => `${d}, ${a.toFixed(2)}`).join("\n");
+  $("r-open").value = H.opening.toFixed(2);
+  $("r-obs").value = "";
+  $("r-out").innerHTML = "";
+}
+
+function runReconcile() {
+  const { days } = prep(H);
+  const recs = parsePairs($("r-rec").value), obs = parsePairs($("r-obs").value);
+  const rec = new Map();
+  for (const [d, a] of recs.out) {
+    const n = dnum(d);
+    rec.set(n, (rec.get(n) || 0) + tkOf(a));
+  }
+  const sim = simulate(days, rec, tkOf(+$("r-open").value || 0));
+  const byDay = new Map(sim.ledger.map(x => [x.n, x]));
+  const rows = obs.out.map(([d, v]) => {
+    const x = byDay.get(dnum(d));
+    return x ? { date: d, shown: tkOf(v), rebuilt: x.balance, diff: tkOf(v) - x.balance } : { date: d, missing: true };
+  });
+  const good = rows.filter(r => !r.missing);
+  const worst = good.length ? Math.max(...good.map(r => Math.abs(r.diff))) : 0;
+  const mean = good.length ? Math.round(good.reduce((a, r) => a + Math.abs(r.diff), 0) / good.length) : 0;
+
+  $("r-out").innerHTML = `
+    ${recs.bad.length ? `<div class="banner warn"><span class="icon">!</span><div>
+      Could not read ${recs.bad.length} recharge line${recs.bad.length === 1 ? "" : "s"}. Each line needs a
+      date and an amount, like <code>2026-05-06, 2000</code>. Skipped: ${recs.bad.slice(0, 3).map(esc).join(" &middot; ")}</div></div>` : ""}
+    <div class="grid3" style="margin:14px 0">
+      <div class="tile"><span class="label">Recharges read</span><span class="value mono">${recs.out.length}</span>
+        <span class="foot">${fmt(sim.recharged)} tk deposited</span></div>
+      <div class="tile"><span class="label">Rebuilt balance on ${dateLabel(sim.ledger[sim.ledger.length - 1].date)}</span>
+        <span class="value mono">${fmt(sim.end)}</span>
+        <span class="foot">${fmt(sim.cost)} tk consumed over ${sim.units} units</span></div>
+      <div class="tile"><span class="label">Months charged demand + rent</span>
+        <span class="value mono">${sim.fixedMonths}</span><span class="foot">${fmt(sim.fixed)} tk in fixed charges</span></div>
+    </div>
+    ${good.length ? `
+      <div class="banner ${worst <= 100 ? "good" : worst <= 5 * TK ? "" : "warn"}">
+        <span class="icon">${worst <= 100 ? "&#10003;" : "&#8776;"}</span>
+        <div>Across ${good.length} meter reading${good.length === 1 ? "" : "s"} the rebuild is off by
+        ${fmt(mean)} tk on average, ${fmt(worst)} tk at worst.
+        ${worst <= 100 ? "That is a match." : "A steady gap usually means a recharge is missing from the list, or the meter took its fixed charges on a different day."}</div></div>
+      <div class="tablebox" style="margin-top:14px"><table>
+        <thead><tr><th>Date</th><th>Meter showed</th><th>Rebuilt</th><th>Difference</th></tr></thead><tbody>
+        ${rows.map(r => r.missing
+          ? `<tr><td>${esc(r.date)}</td><td colspan="3" class="tiny">outside the reading range</td></tr>`
+          : `<tr><td>${dateLabel(r.date)}</td><td class="money">${fmt(r.shown)}</td>
+             <td class="money">${fmt(r.rebuilt)}</td>
+             <td class="money ${Math.abs(r.diff) > 100 ? "neg" : ""}">${Math.abs(r.diff) < 50 ? "0.00" : (r.diff > 0 ? "+" : "") + fmt(r.diff)}</td></tr>`).join("")}
+        </tbody></table></div>` : `<p class="small">Add the balances the meter showed on a few dates to see
+        how close the rebuild is.</p>`}
+    <div class="legend" style="margin:16px 0 8px">
+      <span class="key"><i class="swatch" style="background:var(--s1)"></i> Rebuilt from the pasted history</span>
+      ${good.length ? `<span class="key"><i class="swatch dot" style="background:var(--s3)"></i> What the meter showed</span>` : ""}
+    </div>
+    <div class="chartbox" id="rchart"></div>`;
+
+  const pts = sim.ledger.map(x => ({ n: x.n, balance: x.balance }));
+  balanceChart($("rchart"), [{ color: "var(--s1)", fill: "var(--tint-s1)", points: pts, byDay,
+    marks: sim.ledger.filter(x => x.recharge > 0), markColor: "var(--s2)" }], {
+    height: 260, aria: "Balance rebuilt from the pasted recharge history",
+    tip: r => { const x = r[0].p; return `<div class="t-date">${dateLabel(x.date)}</div><dl>
+      <dt>Rebuilt</dt><dd>${fmt(x.balance)}</dd><dt>Units</dt><dd>${x.units}</dd>
+      <dt>Month to date</dt><dd>${x.cum}</dd></dl>`; },
+  });
+  // observed readings drawn on top of the rebuilt line
+  const svg = $("rchart").querySelector("svg");
+  if (svg && good.length) {
+    const vb = svg.viewBox.baseVal, W = vb.width, Hh = vb.height;
+    const pad = { l: 58, r: 14, t: 14, b: 26 };
+    const n0 = pts[0].n, n1 = pts[pts.length - 1].n;
+    const vals = pts.map(p => p.balance).concat(good.map(g => g.shown));
+    let lo = Math.min(0, ...vals), hi = Math.max(...vals);
+    const step = niceStep(Math.max(hi - lo, TK));
+    lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+    good.forEach(g => {
+      const n = dnum(g.date);
+      const x = pad.l + (n - n0) / Math.max(1, n1 - n0) * (W - pad.l - pad.r);
+      const y = Hh - pad.b - (g.shown - lo) / (hi - lo) * (Hh - pad.t - pad.b);
+      el("circle", { cx: x, cy: y, r: 5, fill: "var(--s3)", stroke: "var(--surface)", "stroke-width": 2 }, svg);
+    });
+  }
+}
+
+/* ---------------------------------------------------------------- wiring -- */
+function renderAnswers() {
+  const bal = S.end, cum = S.ledger[S.ledger.length - 1].cum;
+  const daily = H.daily;
+  const r = runout(TODAY_N, bal, daily, cum);
+  const recMonth = S.ledger.some(x => x.month === dmon(TODAY_N) && x.recharge > 0);
+  const nd = needed(TODAY_N, dnum(H.target), bal, daily, cum, !recMonth);
+  $("tiles").innerHTML = `
+    <div class="tile hero"><span class="label">On the meter today, ${dateLabel(diso(TODAY_N))}</span>
+      <span class="value mono">${fmt(bal)}</span>
+      <span class="foot">${cum} units used since the 1st &mdash; now in the ${slabLabel(slabIndex(cum))} band
+        at ${fmt(SLABS[slabIndex(cum)].rate)} tk a unit</span></div>
+    <div class="tile hero ${r.date && r.days <= 10 ? "warn" : ""}">
+      <span class="label">Runs out on</span>
+      <span class="value">${r.empty ? "already empty" : r.date ? dateLabel(r.date) : "beyond a year"}</span>
+      <span class="foot">${r.empty ? "the meter is in arrears" : r.days + " days at " + daily + " units a day, with no recharge"}</span></div>
+    <div class="tile hero"><span class="label">To last until ${dateLabel(H.target)}</span>
+      <span class="value mono">${fmt(nd.amount)}</span>
+      <span class="foot">${nd.premium > 0 ? fmt(nd.premium) + " tk of it is the higher slabs alone" : "all of it in the first slab"}</span></div>`;
+
+  const w = slabIndex(cum), cap = SLABS[w].upto;
+  $("slabnote").innerHTML = cap === Infinity ? "" : `
+    <div class="banner ${cap - cum <= daily * 4 ? "warn" : ""}">
+      <span class="icon">${cap - cum <= daily * 4 ? "!" : "&#9679;"}</span>
+      <div>${cap - cum} more unit${cap - cum === 1 ? "" : "s"} this month &mdash; about
+        ${Math.ceil((cap - cum) / daily)} day${Math.ceil((cap - cum) / daily) === 1 ? "" : "s"} &mdash;
+        and the rate goes from ${fmt(SLABS[w].rate)} to ${fmt(SLABS[w + 1].rate)} tk a unit for the rest of
+        ${monLabel(dmon(TODAY_N))}. The counter drops back to zero on the 1st.</div></div>`;
+}
+
+function loadHousehold(i) {
+  H = HOUSEHOLDS[i];
+  const { days, rec } = prep(H);
+  S = simulate(days, rec, tkOf(H.opening));
+  TODAY_N = dnum(H.today);
+
+  $("pickmeta").textContent =
+    `${H.units.length} daily readings, ${H.start} to ${H.today} \u00b7 ${H.recharges.length} recharges \u00b7 opening balance ${H.opening.toFixed(2)} tk`;
+
+  const last = S.ledger[S.ledger.length - 1];
+  $("q-bal").value = (Math.round(S.end / 100) / 100).toFixed(2);
+  $("q-daily").value = H.daily;
+  $("q-cum").value = last.cum;
+  $("q-target").value = H.target;
+  $("q-target").min = diso(TODAY_N + 1);
+  $("q-fixed").value = S.ledger.some(x => x.month === dmon(TODAY_N) && x.recharge > 0) ? "0" : "1";
+
+  const c = H.comparison;
+  $("h-thr").value = c.threshold; $("h-low").value = c.lowAmount;
+  $("h-mon").value = c.monthlyAmount; $("h-open").value = c.opening;
+
+  $("billmonth").innerHTML = [...S.months.keys()].map(k =>
+    `<option value="${k}">${monLabel(k)}</option>`).join("");
+  $("billmonth").value = dmon(TODAY_N);
+
+  renderAnswers(); renderHousehold(); renderLedger();
+  renderRunout(); renderNeed(); renderSlabs(); renderHabits(); renderBill();
+  resetReconcile();
+}
+
+function init() {
+  buildPicker();
+  tariffTable();
+  $("pick").addEventListener("change", e => loadHousehold(+e.target.value));
+  ["q-bal", "q-daily", "q-cum"].forEach(id =>
+    $(id).addEventListener("input", () => { renderRunout(); renderNeed(); renderSlabs(); }));
+  ["q-target", "q-fixed"].forEach(id => $(id).addEventListener("input", renderNeed));
+  ["h-thr", "h-low", "h-mon", "h-open"].forEach(id => $(id).addEventListener("input", renderHabits));
+  $("billmonth").addEventListener("change", renderBill);
+  $("r-run").addEventListener("click", runReconcile);
+  $("r-reset").addEventListener("click", () => { resetReconcile(); });
+  $("r-self").addEventListener("click", () => {
+    const pick = S.ledger.filter((_, i) => i % Math.max(1, Math.floor(S.ledger.length / 6)) === 0).slice(0, 6);
+    $("r-obs").value = pick.map(x => `${x.date}, ${(Math.round(x.balance / 100) / 100).toFixed(2)}`).join("\n");
+    runReconcile();
+  });
+  loadHousehold(0);
+}
+init();
+</script>
+</body>
+</html>
